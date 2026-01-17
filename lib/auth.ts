@@ -1,0 +1,136 @@
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+
+export interface User {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  company_name: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+export interface SignupData {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  company_name?: string;
+}
+
+export interface LoginData {
+  email: string;
+  password: string;
+}
+
+// Store token after login/signup
+export const setToken = (token: string) => {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("token", token);
+  }
+};
+
+// Get token
+export const getToken = (): string | null => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("token");
+  }
+  return null;
+};
+
+// Check if logged in
+export const isLoggedIn = (): boolean => {
+  return !!getToken();
+};
+
+// Logout
+export const logout = () => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("token");
+  }
+};
+
+// Authenticated fetch helper
+export const authFetch = async (
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> => {
+  const token = getToken();
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  });
+};
+
+// Sign up
+export const signup = async (data: SignupData): Promise<AuthResponse> => {
+  const response = await fetch(`${API_URL}/api/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || "Signup failed");
+  }
+
+  const result: AuthResponse = await response.json();
+  setToken(result.access_token);
+  return result;
+};
+
+// Login
+export const login = async (data: LoginData): Promise<AuthResponse> => {
+  const response = await fetch(`${API_URL}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || "Login failed");
+  }
+
+  const result: AuthResponse = await response.json();
+  setToken(result.access_token);
+  return result;
+};
+
+// Get current user
+export const getCurrentUser = async (): Promise<User> => {
+  const response = await authFetch(`${API_URL}/api/auth/me`);
+
+  if (!response.ok) {
+    throw new Error("Failed to get user");
+  }
+
+  return response.json();
+};
+
+// Update profile
+export const updateProfile = async (
+  data: Partial<Pick<User, "first_name" | "last_name" | "company_name">>
+): Promise<User> => {
+  const response = await authFetch(`${API_URL}/api/auth/me`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update profile");
+  }
+
+  return response.json();
+};

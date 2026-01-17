@@ -1,0 +1,90 @@
+"use client";
+
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { User, getCurrentUser, getToken, logout as authLogout } from "@/lib/auth";
+
+interface AuthContextType {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  logout: () => void;
+  refreshUser: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const PUBLIC_ROUTES = ["/", "/login", "/signup"];
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const refreshUser = async () => {
+    const token = getToken();
+    if (!token) {
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const userData = await getCurrentUser();
+      setUser(userData);
+    } catch {
+      // Token invalid, clear it
+      authLogout();
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = () => {
+    authLogout();
+    setUser(null);
+    router.push("/login");
+  };
+
+  useEffect(() => {
+    refreshUser();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+      
+      if (!user && !isPublicRoute) {
+        // Not logged in and trying to access protected route
+        router.push("/login");
+      } else if (user && isPublicRoute) {
+        // Logged in and trying to access login/signup
+        router.push("/");
+      }
+    }
+  }, [user, isLoading, pathname, router]);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        isAuthenticated: !!user,
+        logout,
+        refreshUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+}
