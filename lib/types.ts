@@ -82,3 +82,51 @@ export interface CampaignContactsResponse {
   limit: number;
   offset: number;
 }
+
+// Context Research Types (Part B)
+export interface BuyingSignal {
+  type: string;
+  title: string;
+  summary: string;
+  source: string;
+  date: string;
+  strength: "strong" | "medium" | "weak";
+}
+
+export interface CompanyContext {
+  buying_signals: BuyingSignal[];
+  industry_context: BuyingSignal[];
+  regulatory_events: BuyingSignal[];
+  company_news: BuyingSignal[];
+  hiring_signals: BuyingSignal[];
+  signal_strength: "strong" | "medium" | "weak";
+  recommended_hook: string;
+  product_category: string;
+  news: BuyingSignal[];
+  peer_activity: BuyingSignal[];
+}
+
+export interface MessagingBrief {
+  recommended_angles: string[];
+  tone_guidance: string;
+  urgency_level: "low" | "medium" | "high";
+  personalization_hooks: string[];
+  opening_hook: string;
+}
+
+export interface ContextResearchResponse {
+  intelligence_id: string;
+  contact_id: string;
+  company_context: CompanyContext;
+  messaging_brief: MessagingBrief;
+  relevance_score: number;
+  ttl: string;
+  signal_strength: "strong" | "medium" | "weak";
+  recommended_hook: string;
+}
+
+export interface ContextResearchRequest {
+  contact_id: string;
+  product_value_prop: string;
+  research_depth?: "standard" | "deep";
+}

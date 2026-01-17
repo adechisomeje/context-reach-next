@@ -21,10 +21,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Campaign, CampaignContactsResponse, Contact } from "@/lib/types";
+import { Campaign, CampaignContactsResponse, Contact, ContextResearchResponse } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
+import { ContextResearchPanel } from "@/components/ContextResearchPanel";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+const CONTEXT_API_URL = process.env.NEXT_PUBLIC_CONTEXT_API_URL || "http://localhost:8002";
 
 export default function CampaignDetailPage() {
   const params = useParams();
@@ -35,6 +37,22 @@ export default function CampaignDetailPage() {
   const [totalContacts, setTotalContacts] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Context Research state
+  const [mode, setMode] = useState<"manual" | "auto">("manual");
+  const [researchingContactId, setResearchingContactId] = useState<string | null>(null);
+  const [researchError, setResearchError] = useState<string | null>(null);
+  const [selectedResearch, setSelectedResearch] = useState<ContextResearchResponse | null>(null);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [contactResearch, setContactResearch] = useState<Record<string, ContextResearchResponse>>({});
+
+  // Load mode from localStorage
+  useEffect(() => {
+    const savedMode = localStorage.getItem("contextreach_mode") as "manual" | "auto";
+    if (savedMode) {
+      setMode(savedMode);
+    }
+  }, []);
 
   const fetchCampaignData = async () => {
     setIsLoading(true);
@@ -72,6 +90,60 @@ export default function CampaignDetailPage() {
       fetchCampaignData();
     }
   }, [campaignId]);
+
+  // Initiate Context Research for a contact
+  const handleResearch = async (contact: Contact) => {
+    if (!campaign) return;
+    
+    setResearchingContactId(contact.id);
+    setResearchError(null);
+
+    try {
+      const response = await authFetch(CONTEXT_API_URL + "/api/research", {
+        method: "POST",
+        body: JSON.stringify({
+          contact_id: contact.id,
+          product_value_prop: campaign.product_description || campaign.solution_description,
+          research_depth: "standard",
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 402) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail?.message || "Insufficient credits for context research");
+        }
+        throw new Error("Failed to initiate research: " + response.status);
+      }
+
+      const data: ContextResearchResponse = await response.json();
+      
+      // Store the research result (don't auto-open modal)
+      setContactResearch((prev) => ({
+        ...prev,
+        [contact.id]: data,
+      }));
+    } catch (err) {
+      console.error("Research failed:", err);
+      setResearchError(err instanceof Error ? err.message : "Failed to initiate research");
+    } finally {
+      setResearchingContactId(null);
+    }
+  };
+
+  // View existing research for a contact
+  const handleViewResearch = (contact: Contact) => {
+    const research = contactResearch[contact.id];
+    if (research) {
+      setSelectedResearch(research);
+      setSelectedContact(contact);
+    }
+  };
+
+  const closeResearchPanel = () => {
+    setSelectedResearch(null);
+    setSelectedContact(null);
+  };
 
   const getInitials = (firstName: string | null, lastName: string | null) => {
     const first = firstName?.charAt(0) || "";
@@ -326,6 +398,7 @@ export default function CampaignDetailPage() {
                       <TableHead>Email</TableHead>
                       <TableHead>Match Score</TableHead>
                       <TableHead>Confidence</TableHead>
+                      {mode === "manual" && <TableHead>Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -394,6 +467,40 @@ export default function CampaignDetailPage() {
                         <TableCell>
                           {getConfidenceBadge(contact.email_confidence)}
                         </TableCell>
+                        {mode === "manual" && (
+                          <TableCell>
+                            {contactResearch[contact.id] ? (
+                              <div className="flex items-center gap-2">
+                                <Badge className="bg-green-100 text-green-800">
+                                  ✓ Researched
+                                </Badge>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleViewResearch(contact)}
+                                >
+                                  View
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleResearch(contact)}
+                                disabled={researchingContactId === contact.id}
+                              >
+                                {researchingContactId === contact.id ? (
+                                  <>
+                                    <span className="animate-spin mr-1">⏳</span>
+                                    Researching...
+                                  </>
+                                ) : (
+                                  <>🔍 Research</>
+                                )}
+                              </Button>
+                            )}
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
@@ -402,7 +509,37 @@ export default function CampaignDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Research Error */}
+        {researchError && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+            <div className="flex items-start gap-2">
+              <span>❌</span>
+              <div>
+                <p className="font-medium">Research Failed</p>
+                <p>{researchError}</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2"
+              onClick={() => setResearchError(null)}
+            >
+              Dismiss
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* Context Research Panel */}
+      {selectedResearch && selectedContact && (
+        <ContextResearchPanel
+          research={selectedResearch}
+          contact={selectedContact}
+          onClose={closeResearchPanel}
+        />
+      )}
     </div>
   );
 }
