@@ -8,6 +8,15 @@ export interface User {
   company_name: string | null;
   is_active: boolean;
   created_at: string;
+  credits: number;
+}
+
+export interface CreditBalance {
+  current_balance: number;
+  total_credits_used: number;
+  usage_by_type: Record<string, number>;
+  transactions_last_30_days: number;
+  credits_per_action: number;
 }
 
 export interface AuthResponse {
@@ -114,6 +123,17 @@ export const getCurrentUser = async (): Promise<User> => {
 
   if (!response.ok) {
     throw new Error("Failed to get user");
+  }
+
+  return response.json();
+};
+
+// Get credit balance
+export const getCreditBalance = async (): Promise<CreditBalance> => {
+  const response = await authFetch(`${API_URL}/api/auth/credits`);
+
+  if (!response.ok) {
+    throw new Error("Failed to get credits");
   }
 
   return response.json();
