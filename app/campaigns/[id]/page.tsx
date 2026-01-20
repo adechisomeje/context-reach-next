@@ -24,12 +24,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Campaign, CampaignContactsResponse, Contact, ContextResearchResponse } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { ContextResearchPanel } from "@/components/ContextResearchPanel";
+import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 const CONTEXT_API_URL = process.env.NEXT_PUBLIC_CONTEXT_API_URL || "http://localhost:8002";
 
 export default function CampaignDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const campaignId = params.id as string;
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
@@ -37,6 +39,9 @@ export default function CampaignDetailPage() {
   const [totalContacts, setTotalContacts] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteContacts, setDeleteContacts] = useState(true);
   
   // Context Research state
   const [mode, setMode] = useState<"manual" | "auto">("manual");
@@ -145,6 +150,30 @@ export default function CampaignDetailPage() {
     setSelectedContact(null);
   };
 
+  // Delete campaign
+  const handleDeleteCampaign = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await authFetch(
+        `${API_URL}/api/campaigns/${campaignId}?delete_contacts=${deleteContacts}`,
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete campaign: " + response.status);
+      }
+
+      // Redirect to campaigns list
+      router.push("/campaigns");
+    } catch (err) {
+      console.error("Delete failed:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete campaign");
+      setShowDeleteModal(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const getInitials = (firstName: string | null, lastName: string | null) => {
     const first = firstName?.charAt(0) || "";
     const last = lastName?.charAt(0) || "";
@@ -227,6 +256,18 @@ export default function CampaignDetailPage() {
                 {campaign.solution_description}
               </p>
             </div>
+            {/* Delete Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeleteModal(true)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete
+            </Button>
           </div>
         </div>
 
@@ -539,6 +580,78 @@ export default function CampaignDetailPage() {
           contact={selectedContact}
           onClose={closeResearchPanel}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Delete Campaign
+                </h3>
+                <p className="text-sm text-slate-500">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              Are you sure you want to delete <span className="font-medium">"{campaign?.name}"</span>?
+            </p>
+
+            {/* Delete contacts checkbox */}
+            <label className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg cursor-pointer mb-6">
+              <input
+                type="checkbox"
+                checked={deleteContacts}
+                onChange={(e) => setDeleteContacts(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-slate-900 dark:text-white">
+                  Also delete all contacts
+                </span>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {totalContacts} contacts will be permanently deleted. Uncheck to keep contacts but unlink them from this campaign.
+                </p>
+              </div>
+            </label>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteContacts(true);
+                }}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteCampaign}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Campaign"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
