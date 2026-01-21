@@ -130,3 +130,40 @@ export interface ContextResearchRequest {
   product_value_prop: string;
   research_depth?: "standard" | "deep";
 }
+
+// Email Signature Types
+export type ClosingStyle = "best_regards" | "thanks" | "cheers" | "sincerely" | "warm_regards";
+
+export interface EmailSignature {
+  id: string;
+  user_id: string;
+  name: string;
+  first_name: string;
+  last_name: string | null;
+  title: string | null;
+  company: string | null;
+  closing: ClosingStyle;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateSignatureRequest {
+  name: string;
+  first_name: string;
+  last_name?: string;
+  title?: string;
+  company?: string;
+  closing?: ClosingStyle;
+  is_default?: boolean;
+}
+
+export interface UpdateSignatureRequest {
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  title?: string;
+  company?: string;
+  closing?: ClosingStyle;
+  is_default?: boolean;
+}
