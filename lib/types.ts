@@ -246,7 +246,7 @@ export interface StartSequenceRequest {
 }
 
 // Message Types (from Composition Engine)
-export type MessageStatus = "scheduled" | "sent" | "delivered" | "failed" | "cancelled";
+export type MessageStatus = "draft" | "scheduled" | "sent" | "delivered" | "bounced" | "replied" | "failed" | "cancelled";
 
 export interface Message {
   id: string;
@@ -280,4 +280,96 @@ export interface ContactIntelligence {
   created_at: string | null;
   ttl: string | null;
   refreshed_at: string | null;
+}
+
+// Sequence Types (Part C - Multi-step sequences)
+export type TimingStrategy = "human_like" | "aggressive" | "patient";
+
+export interface SequenceConfig {
+  max_steps: number;
+  stop_on_reply: boolean;
+  timing_strategy: TimingStrategy;
+}
+
+export interface CreateSequenceRequest {
+  contact_id: string;
+  campaign_id: string;
+  sequence_config: SequenceConfig;
+  signature?: SignaturePayload;
+}
+
+export interface SequenceStep {
+  step: number;
+  message_id: string;
+  intent: EmailIntent;
+  subject: string;
+  scheduled_send_at: string;
+  sent_at?: string | null;
+  status: MessageStatus;
+}
+
+export interface CreateSequenceResponse {
+  sequence_id: string;
+  contact_id: string;
+  campaign_id: string;
+  status: "scheduled" | "active" | "paused" | "completed" | "cancelled";
+  steps: SequenceStep[];
+}
+
+export interface SequenceState {
+  current_step: number;
+  last_sent_at: string | null;
+  next_send_window: string | null;
+  is_paused: boolean;
+  reply_detected: boolean;
+}
+
+export interface SequenceStatusResponse {
+  contact_id: string;
+  campaign_id?: string;
+  sequence_state: SequenceState | null;
+  is_locked: boolean;
+  lock_reason: string | null;
+  messages: SequenceStep[];
+}
+
+// Event Types (Part D - Delivery tracking)
+export type EventType = "sent" | "delivered" | "opened" | "clicked" | "bounced" | "replied" | "unsubscribed";
+
+export interface EmailEvent {
+  id: string;
+  message_id: string;
+  contact_id: string;
+  type: EventType;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ContactEventsResponse {
+  contact_id: string;
+  events: EmailEvent[];
+}
+
+export interface MessageEventsResponse {
+  message_id: string;
+  events: EmailEvent[];
+}
+
+// Analytics Types (Part D)
+export interface CampaignAnalytics {
+  campaign_id: string;
+  total_sent: number;
+  delivered: number;
+  bounced: number;
+  opened: number;
+  clicked: number;
+  replied: number;
+  reply_rate: number;
+  positive_replies: number;
+  negative_replies: number;
+  neutral_replies: number;
+  deliverability_rate: number;
+  open_rate: number;
+  click_rate: number;
+  average_time_to_reply: string | null;
 }

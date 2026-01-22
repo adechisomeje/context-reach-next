@@ -24,7 +24,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Campaign, CampaignContactsResponse, Contact, ContextResearchResponse, Message, MessagesResponse } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { ContextResearchPanel } from "@/components/ContextResearchPanel";
-import { EmailComposer } from "@/components/EmailComposer";
+import { SequenceCreator } from "@/components/SequenceCreator";
+import { ContactSequenceDetail } from "@/components/ContactSequenceDetail";
+import { CampaignAnalyticsDashboard } from "@/components/CampaignAnalyticsDashboard";
+import { useCampaignAnalytics } from "@/hooks/useAnalytics";
 import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
@@ -56,8 +59,15 @@ export default function CampaignDetailPage() {
   // Messages state (for showing scheduled/sent status)
   const [contactMessages, setContactMessages] = useState<Record<string, Message[]>>({});
   
-  // Email Composer state
+  // Email Composer / Sequence state
   const [composingContact, setComposingContact] = useState<Contact | null>(null);
+  const [viewingSequenceContact, setViewingSequenceContact] = useState<Contact | null>(null);
+  
+  // Analytics
+  const { analytics, loading: analyticsLoading } = useCampaignAnalytics(campaignId);
+  
+  // Active tab
+  const [activeTab, setActiveTab] = useState<"contacts" | "analytics">("contacts");
 
   // Load mode from localStorage
   useEffect(() => {
@@ -460,7 +470,34 @@ export default function CampaignDetailPage() {
           </Card>
         )}
 
+        {/* Tabs for Contacts / Analytics */}
+        <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg w-fit">
+          <Button
+            variant={activeTab === "contacts" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("contacts")}
+          >
+            👥 Contacts ({totalContacts})
+          </Button>
+          <Button
+            variant={activeTab === "analytics" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("analytics")}
+          >
+            📊 Analytics
+          </Button>
+        </div>
+
+        {/* Analytics Dashboard */}
+        {activeTab === "analytics" && (
+          <CampaignAnalyticsDashboard
+            analytics={analytics}
+            loading={analyticsLoading}
+          />
+        )}
+
         {/* Contacts Table */}
+        {activeTab === "contacts" && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -593,14 +630,20 @@ export default function CampaignDetailPage() {
                                   const msgStatus = getContactMessageStatus(contact.id);
                                   if (msgStatus?.status === "sent") {
                                     return (
-                                      <Badge className="bg-blue-100 text-blue-800">
+                                      <Badge 
+                                        className="bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
+                                        onClick={() => setViewingSequenceContact(contact)}
+                                      >
                                         ✅ Sent ({msgStatus.count})
                                       </Badge>
                                     );
                                   }
                                   if (msgStatus?.status === "scheduled") {
                                     return (
-                                      <Badge className="bg-amber-100 text-amber-800">
+                                      <Badge 
+                                        className="bg-amber-100 text-amber-800 cursor-pointer hover:bg-amber-200"
+                                        onClick={() => setViewingSequenceContact(contact)}
+                                      >
                                         📧 Scheduled ({msgStatus.count})
                                       </Badge>
                                     );
@@ -612,15 +655,25 @@ export default function CampaignDetailPage() {
                                   size="sm"
                                   onClick={() => handleViewResearch(contact)}
                                 >
-                                  View
+                                  Research
                                 </Button>
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => setComposingContact(contact)}
-                                >
-                                  ✉️ Compose
-                                </Button>
+                                {getContactMessageStatus(contact.id) ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setViewingSequenceContact(contact)}
+                                  >
+                                    📊 Details
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={() => setComposingContact(contact)}
+                                  >
+                                    🚀 Sequence
+                                  </Button>
+                                )}
                               </div>
                             ) : (
                               <Button
@@ -649,6 +702,7 @@ export default function CampaignDetailPage() {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Research Error */}
         {researchError && (
@@ -685,15 +739,24 @@ export default function CampaignDetailPage() {
 
       {/* Email Composer (Direct from contact row) */}
       {composingContact && (
-        <EmailComposer
+        <SequenceCreator
           contact={composingContact}
           campaignId={campaignId}
           onClose={() => setComposingContact(null)}
-          onEmailScheduled={() => {
+          onSequenceCreated={() => {
             setComposingContact(null);
             // Refresh data to show updated message status
             fetchCampaignData();
           }}
+        />
+      )}
+
+      {/* Sequence Detail Modal */}
+      {viewingSequenceContact && (
+        <ContactSequenceDetail
+          contact={viewingSequenceContact}
+          campaignId={campaignId}
+          onClose={() => setViewingSequenceContact(null)}
         />
       )}
 

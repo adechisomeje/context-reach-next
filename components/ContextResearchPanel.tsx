@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { ContextResearchResponse, BuyingSignal, Contact } from "@/lib/types";
 import { useState } from "react";
-import { EmailComposer } from "@/components/EmailComposer";
+import { SequenceCreator } from "@/components/SequenceCreator";
 
 interface ContextResearchPanelProps {
   research: ContextResearchResponse;
@@ -263,23 +263,20 @@ export function ContextResearchPanel({
                 Close
               </Button>
               <Button onClick={() => setShowComposer(true)}>
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                Compose Email
+                🚀 Start Sequence
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Email Composer Modal */}
+      {/* Email Sequence Creator Modal */}
       {showComposer && (
-        <EmailComposer
+        <SequenceCreator
           contact={contact}
           campaignId={campaignId}
           onClose={() => setShowComposer(false)}
-          onEmailScheduled={() => {
+          onSequenceCreated={() => {
             setShowComposer(false);
             onEmailScheduled?.();
           }}

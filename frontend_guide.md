@@ -8,7 +8,27 @@ A Next.js frontend for the ContextReach outreach platform with a **pipeline work
 
 ---
 
-## Part A: Discovery Engine (Current Focus)
+## Architecture
+
+### Backend Services
+| Service | Port | Purpose |
+|---------|------|---------|
+| Part A: Discovery Engine | 8001 | Find and enrich contacts |
+| Part B: Context Engine | 8002 | Research contacts, find buying signals |
+| Part C: Compose Engine | 8003 | Create email sequences |
+| Part D: Delivery Engine | 8004 | Send emails, track events, analytics |
+
+### Environment Variables
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8001
+NEXT_PUBLIC_CONTEXT_API_URL=http://localhost:8002
+NEXT_PUBLIC_COMPOSE_API_URL=http://localhost:8003
+NEXT_PUBLIC_DELIVERY_API_URL=http://localhost:8004
+```
+
+---
+
+## Part A: Discovery Engine
 
 ### What Part A Does
 1. User describes their solution
@@ -47,6 +67,136 @@ POST http://localhost:8001/api/analyze-solution
 
 ---
 
+## Part B: Context Research
+
+### What Part B Does
+1. Takes a contact from Part A
+2. Researches their company for buying signals
+3. Identifies pain points, news, hiring signals
+4. Returns context for email personalization
+
+### API Endpoint
+```
+POST http://localhost:8002/api/research
+{
+  "contact_id": "uuid",
+  "product_value_prop": "Your solution description"
+}
+```
+
+---
+
+## Part C: Email Sequences
+
+### Key Concept: Multi-Step Sequences
+Part C creates a sequence of up to 4 emails per contact:
+- **Step 1**: Introduction
+- **Step 2**: Value proposition  
+- **Step 3**: Question/engagement
+- **Step 4**: Breakup (final attempt)
+
+The sequence automatically stops when:
+- Contact replies
+- Contact bounces
+- Breakup email is sent
+- User pauses/cancels the sequence
+
+### Create a Sequence
+```typescript
+POST http://localhost:8003/api/sequence/create
+{
+  "contact_id": "uuid",
+  "campaign_id": "uuid",
+  "sequence_config": {
+    "max_steps": 3,
+    "stop_on_reply": true,
+    "timing_strategy": "human_like" // or "aggressive" | "patient"
+  },
+  "signature": {
+    "first_name": "John",
+    "last_name": "Doe",
+    "title": "Sales",
+    "company": "Acme Inc",
+    "closing": "best_regards"
+  }
+}
+```
+
+### Get Sequence Status
+```typescript
+GET http://localhost:8003/api/sequence/{contactId}?campaign_id={campaignId}
+
+// Returns:
+{
+  "contact_id": "...",
+  "sequence_state": {
+    "current_step": 2,
+    "last_sent_at": "2026-01-22T14:32:15.000Z",
+    "next_send_window": "2026-01-25T10:15:00.000Z",
+    "is_paused": false,
+    "reply_detected": false
+  },
+  "messages": [
+    {
+      "step": 1,
+      "message_id": "...",
+      "intent": "introduction",
+      "subject": "Quick question about...",
+      "status": "sent",
+      "scheduled_send_at": "...",
+      "sent_at": "..."
+    }
+  ]
+}
+```
+
+### Sequence Controls
+```typescript
+// Pause
+POST http://localhost:8003/api/sequence/{contactId}/pause
+
+// Resume
+POST http://localhost:8003/api/sequence/{contactId}/resume
+
+// Cancel (deletes all pending emails)
+DELETE http://localhost:8003/api/sequence/{contactId}
+```
+
+---
+
+## Part D: Analytics & Events
+
+### Campaign Analytics
+```typescript
+GET http://localhost:8004/api/analytics/campaign/{campaignId}
+
+// Returns:
+{
+  "campaign_id": "...",
+  "total_sent": 150,
+  "delivered": 145,
+  "bounced": 5,
+  "opened": 89,
+  "clicked": 23,
+  "replied": 18,
+  "reply_rate": 12.4,
+  "positive_replies": 12,
+  "negative_replies": 4,
+  "neutral_replies": 2,
+  "deliverability_rate": 96.7,
+  "average_time_to_reply": "2 days 4 hours"
+}
+```
+
+### Contact Events
+```typescript
+GET http://localhost:8004/api/events/contact/{contactId}
+
+// Returns all events: sent, delivered, opened, clicked, bounced, replied
+```
+
+---
+
 ## Project Structure
 
 ```
@@ -63,12 +213,18 @@ frontend/
 │   │   ├── DiscoveryForm.tsx    # Solution input form
 │   │   ├── JobProgress.tsx      # Progress bar + status
 │   │   └── ContactsTable.tsx    # Results table
+│   ├── sequences/
+│   │   ├── SequenceCreator.tsx  # Create email sequences
+│   │   ├── EmailSequenceTimeline.tsx # Visual timeline of sequence steps
+│   │   └── ContactSequenceDetail.tsx # Full sequence status with controls
 │   └── ui/                      # shadcn components
 ├── lib/
 │   ├── api.ts                   # API client
 │   └── types.ts                 # TypeScript types
 └── hooks/
-    └── useDiscoveryJob.ts       # Polling hook
+    ├── useDiscoveryJob.ts       # Polling hook
+    ├── useSequence.ts           # Manage sequence state
+    └── useCampaignAnalytics.ts   # Fetch campaign-wide analytics
 ```
 
 ---
@@ -112,6 +268,41 @@ Only shows when:
 - Discovery is complete
 - Mode is Manual
 - At least 1 contact found
+
+### 6. Sequence Creator
+
+```tsx
+// components/sequences/SequenceCreator.tsx
+interface SequenceData {
+  contactId: string;
+  campaignId: string;
+  maxSteps: number;
+  stopOnReply: boolean;
+  timingStrategy: "human_like" | "aggressive" | "patient";
+  signature: {
+    firstName: string;
+    lastName: string;
+    title: string;
+    company: string;
+    closing: string;
+  };
+}
+```
+
+### 7. Email Sequence Timeline
+
+```tsx
+// components/sequences/EmailSequenceTimeline.tsx
+type SequenceStatus = 
+  | "draft" 
+  | "scheduled" 
+  | "sent" 
+  | "delivered" 
+  | "bounced" 
+  | "replied" 
+  | "failed" 
+  | "cancelled";
+```
 
 ---
 
@@ -158,6 +349,46 @@ export const api = {
   // Get contacts
   getContacts: () =>
     fetch(`${API}/api/contacts`).then(r => r.json()),
+
+  // Research contact
+  researchContact: (data: ResearchRequest) =>
+    fetch(`${API}/api/research`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(r => r.json()),
+
+  // Create email sequence
+  createSequence: (data: SequenceRequest) =>
+    fetch(`${API}/api/sequence/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(r => r.json()),
+
+  // Get sequence status
+  getSequenceStatus: (contactId: string, campaignId: string) =>
+    fetch(`${API}/api/sequence/${contactId}?campaign_id=${campaignId}`).then(r => r.json()),
+
+  // Pause sequence
+  pauseSequence: (contactId: string) =>
+    fetch(`${API}/api/sequence/${contactId}/pause`, { method: 'POST' }).then(r => r.json()),
+
+  // Resume sequence
+  resumeSequence: (contactId: string) =>
+    fetch(`${API}/api/sequence/${contactId}/resume`, { method: 'POST' }).then(r => r.json()),
+
+  // Cancel sequence
+  cancelSequence: (contactId: string) =>
+    fetch(`${API}/api/sequence/${contactId}`, { method: 'DELETE' }).then(r => r.json()),
+
+  // Get campaign analytics
+  getCampaignAnalytics: (campaignId: string) =>
+    fetch(`${API}/api/analytics/campaign/${campaignId}`).then(r => r.json()),
+
+  // Get contact events
+  getContactEvents: (contactId: string) =>
+    fetch(`${API}/api/events/contact/${contactId}`).then(r => r.json()),
 };
 ```
 
