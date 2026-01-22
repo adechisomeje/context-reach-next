@@ -21,13 +21,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Campaign, CampaignContactsResponse, Contact, ContextResearchResponse } from "@/lib/types";
+import { Campaign, CampaignContactsResponse, Contact, ContextResearchResponse, Message, MessagesResponse } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { ContextResearchPanel } from "@/components/ContextResearchPanel";
+import { EmailComposer } from "@/components/EmailComposer";
 import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 const CONTEXT_API_URL = process.env.NEXT_PUBLIC_CONTEXT_API_URL || "http://localhost:8002";
+const COMPOSE_API_URL = process.env.NEXT_PUBLIC_COMPOSE_API_URL || "http://localhost:8003";
 
 export default function CampaignDetailPage() {
   const params = useParams();
@@ -50,6 +52,12 @@ export default function CampaignDetailPage() {
   const [selectedResearch, setSelectedResearch] = useState<ContextResearchResponse | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [contactResearch, setContactResearch] = useState<Record<string, ContextResearchResponse>>({});
+  
+  // Messages state (for showing scheduled/sent status)
+  const [contactMessages, setContactMessages] = useState<Record<string, Message[]>>({});
+  
+  // Email Composer state
+  const [composingContact, setComposingContact] = useState<Contact | null>(null);
 
   // Load mode from localStorage
   useEffect(() => {
@@ -72,9 +80,9 @@ export default function CampaignDetailPage() {
       const campaignData: Campaign = await campaignResponse.json();
       setCampaign(campaignData);
 
-      // Fetch campaign contacts
+      // Fetch campaign contacts with intelligence status
       const contactsResponse = await authFetch(
-        API_URL + "/api/campaigns/" + campaignId + "/contacts?limit=50&offset=0"
+        API_URL + "/api/campaigns/" + campaignId + "/contacts?limit=50&offset=0&include_intelligence=true"
       );
       if (!contactsResponse.ok) {
         throw new Error("Failed to fetch contacts: " + contactsResponse.status);
@@ -82,6 +90,28 @@ export default function CampaignDetailPage() {
       const contactsData: CampaignContactsResponse = await contactsResponse.json();
       setContacts(contactsData.contacts);
       setTotalContacts(contactsData.total);
+
+      // Fetch messages for this campaign to show scheduled/sent status
+      try {
+        const messagesResponse = await authFetch(
+          COMPOSE_API_URL + "/api/messages?campaign_id=" + campaignId
+        );
+        if (messagesResponse.ok) {
+          const messagesData: MessagesResponse = await messagesResponse.json();
+          // Group messages by contact_id
+          const messagesByContact: Record<string, Message[]> = {};
+          messagesData.messages.forEach((msg) => {
+            if (!messagesByContact[msg.contact_id]) {
+              messagesByContact[msg.contact_id] = [];
+            }
+            messagesByContact[msg.contact_id].push(msg);
+          });
+          setContactMessages(messagesByContact);
+        }
+      } catch (msgErr) {
+        // Messages fetch is non-critical, just log it
+        console.warn("Could not fetch messages:", msgErr);
+      }
     } catch (err) {
       console.error("Failed to fetch campaign data:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch campaign data");
@@ -137,11 +167,36 @@ export default function CampaignDetailPage() {
   };
 
   // View existing research for a contact
-  const handleViewResearch = (contact: Contact) => {
+  const handleViewResearch = async (contact: Contact) => {
+    // First check local state
     const research = contactResearch[contact.id];
     if (research) {
       setSelectedResearch(research);
       setSelectedContact(contact);
+      return;
+    }
+
+    // If contact has research on backend but not locally, fetch it
+    if (contact.has_research && contact.intelligence_id) {
+      try {
+        const response = await authFetch(
+          `${CONTEXT_API_URL}/api/intelligence/${contact.intelligence_id}`
+        );
+        if (response.ok) {
+          const intelligenceData = await response.json();
+          // Store in local state for future use
+          setContactResearch((prev) => ({
+            ...prev,
+            [contact.id]: intelligenceData,
+          }));
+          setSelectedResearch(intelligenceData);
+          setSelectedContact(contact);
+        } else {
+          console.error("Failed to fetch intelligence:", response.status);
+        }
+      } catch (err) {
+        console.error("Error fetching intelligence:", err);
+      }
     }
   };
 
@@ -172,6 +227,25 @@ export default function CampaignDetailPage() {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  // Check if contact has research (from backend or local state)
+  const hasResearch = (contact: Contact): boolean => {
+    return contact.has_research === true || !!contactResearch[contact.id];
+  };
+
+  // Get the latest message status for a contact
+  const getContactMessageStatus = (contactId: string): { status: string; count: number } | null => {
+    const messages = contactMessages[contactId];
+    if (!messages || messages.length === 0) return null;
+    
+    // Count by status
+    const scheduled = messages.filter(m => m.status === "scheduled").length;
+    const sent = messages.filter(m => m.status === "sent" || m.status === "delivered").length;
+    
+    if (sent > 0) return { status: "sent", count: sent };
+    if (scheduled > 0) return { status: "scheduled", count: scheduled };
+    return null;
   };
 
   const getInitials = (firstName: string | null, lastName: string | null) => {
@@ -510,17 +584,42 @@ export default function CampaignDetailPage() {
                         </TableCell>
                         {mode === "manual" && (
                           <TableCell>
-                            {contactResearch[contact.id] ? (
-                              <div className="flex items-center gap-2">
+                            {hasResearch(contact) ? (
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <Badge className="bg-green-100 text-green-800">
                                   ✓ Researched
                                 </Badge>
+                                {(() => {
+                                  const msgStatus = getContactMessageStatus(contact.id);
+                                  if (msgStatus?.status === "sent") {
+                                    return (
+                                      <Badge className="bg-blue-100 text-blue-800">
+                                        ✅ Sent ({msgStatus.count})
+                                      </Badge>
+                                    );
+                                  }
+                                  if (msgStatus?.status === "scheduled") {
+                                    return (
+                                      <Badge className="bg-amber-100 text-amber-800">
+                                        📧 Scheduled ({msgStatus.count})
+                                      </Badge>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleViewResearch(contact)}
                                 >
                                   View
+                                </Button>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => setComposingContact(contact)}
+                                >
+                                  ✉️ Compose
                                 </Button>
                               </div>
                             ) : (
@@ -578,7 +677,23 @@ export default function CampaignDetailPage() {
         <ContextResearchPanel
           research={selectedResearch}
           contact={selectedContact}
+          campaignId={campaignId}
           onClose={closeResearchPanel}
+          onEmailScheduled={fetchCampaignData}
+        />
+      )}
+
+      {/* Email Composer (Direct from contact row) */}
+      {composingContact && (
+        <EmailComposer
+          contact={composingContact}
+          campaignId={campaignId}
+          onClose={() => setComposingContact(null)}
+          onEmailScheduled={() => {
+            setComposingContact(null);
+            // Refresh data to show updated message status
+            fetchCampaignData();
+          }}
         />
       )}
 
