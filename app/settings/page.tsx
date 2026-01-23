@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { EmailSignature, CreateSignatureRequest, ClosingStyle } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
+import { useAuth } from "@/components/AuthProvider";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 const OAUTH_API_URL = process.env.NEXT_PUBLIC_OAUTH_API_URL || "http://localhost:8004";
@@ -36,10 +36,11 @@ const CLOSING_OPTIONS: { value: ClosingStyle; label: string }[] = [
 ];
 
 export default function SettingsPage() {
-  const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [signatures, setSignatures] = useState<EmailSignature[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Gmail connection state
   const [gmailStatus, setGmailStatus] = useState<GmailStatus | null>(null);
@@ -91,9 +92,11 @@ export default function SettingsPage() {
 
   // Fetch Gmail connection status
   const fetchGmailStatus = async () => {
+    if (!user?.id) return;
+    
     setGmailLoading(true);
     try {
-      const response = await authFetch(`${OAUTH_API_URL}/api/oauth/google/status`);
+      const response = await authFetch(`${OAUTH_API_URL}/api/oauth/google/status?user_id=${user.id}`);
       if (response.ok) {
         const data = await response.json();
         setGmailStatus(data);
@@ -109,28 +112,50 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
-    fetchGmailStatus();
+    if (user?.id) {
+      fetchGmailStatus();
+    }
     
-    // Check for callback params
-    const connected = searchParams.get("connected");
-    const email = searchParams.get("email");
-    if (connected === "true" && email) {
-      setGmailStatus({ connected: true, email });
+    // Check for callback params from Gmail OAuth
+    const params = new URLSearchParams(window.location.search);
+    const gmailConnected = params.get("gmail_connected");
+    const gmailError = params.get("gmail_error");
+    
+    if (gmailConnected === "true") {
+      setSuccessMessage("Gmail connected successfully!");
+      // Clean up URL
+      window.history.replaceState({}, "", "/settings");
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
+      // Refresh Gmail status
+      if (user?.id) {
+        fetchGmailStatus();
+      }
+    }
+    
+    if (gmailError) {
+      setError(decodeURIComponent(gmailError));
       // Clean up URL
       window.history.replaceState({}, "", "/settings");
     }
-  }, [searchParams]);
+  }, [user?.id]);
 
   // Connect Gmail
   const connectGmail = async () => {
+    if (!user?.id) {
+      setError("User not authenticated");
+      return;
+    }
+    
     setGmailConnecting(true);
     try {
-      const response = await authFetch(`${OAUTH_API_URL}/api/oauth/google/auth-url`);
+      const response = await authFetch(`${OAUTH_API_URL}/api/oauth/google/auth-url?user_id=${user.id}`);
       if (response.ok) {
         const data = await response.json();
         window.location.href = data.auth_url;
       } else {
-        setError("Failed to get Gmail authorization URL");
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || "Failed to get Gmail authorization URL");
       }
     } catch (err) {
       console.error("Failed to connect Gmail:", err);
@@ -142,16 +167,28 @@ export default function SettingsPage() {
 
   // Disconnect Gmail
   const disconnectGmail = async () => {
+    if (!user?.id) {
+      setError("User not authenticated");
+      return;
+    }
+    
     setGmailDisconnecting(true);
     try {
-      const response = await authFetch(`${OAUTH_API_URL}/api/oauth/google/disconnect`, {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${OAUTH_API_URL}/api/oauth/google/disconnect?user_id=${user.id}`, {
         method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       });
       if (response.ok) {
         setGmailStatus({ connected: false });
         setShowDisconnectModal(false);
+        setSuccessMessage("Gmail disconnected successfully");
+        setTimeout(() => setSuccessMessage(null), 5000);
       } else {
-        setError("Failed to disconnect Gmail");
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || "Failed to disconnect Gmail");
       }
     } catch (err) {
       console.error("Failed to disconnect Gmail:", err);
@@ -295,6 +332,21 @@ export default function SettingsPage() {
             </p>
           </div>
         </div>
+
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-700 text-sm flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              {successMessage}
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setSuccessMessage(null)}>
+              Dismiss
+            </Button>
+          </div>
+        )}
 
         {/* Error Display */}
         {error && (

@@ -1,10 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { SequenceStep, MessageStatus, SequenceState } from "@/lib/types";
+
+interface EmailPreview {
+  subject: string;
+  body: string;
+  intent: string;
+  preview: boolean;
+  cached?: boolean;
+}
 
 interface EmailSequenceTimelineProps {
   messages: SequenceStep[];
   sequenceState: SequenceState | null;
+  contactId: string;
+  campaignId: string;
   onPause?: () => void;
   onResume?: () => void;
   onCancel?: () => void;
@@ -106,11 +117,70 @@ function formatRelativeTime(dateString: string): string {
 export function EmailSequenceTimeline({
   messages,
   sequenceState,
+  contactId,
+  campaignId,
   onPause,
   onResume,
   onCancel,
   isLoading,
 }: EmailSequenceTimelineProps) {
+  const [previewingStep, setPreviewingStep] = useState<number | null>(null);
+  const [previewCache, setPreviewCache] = useState<Record<number, EmailPreview>>({});
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const COMPOSE_API_URL = process.env.NEXT_PUBLIC_COMPOSE_API_URL || "http://localhost:8003";
+
+  // Get current preview from cache
+  const emailPreview = previewingStep !== null ? previewCache[previewingStep] : null;
+
+  const fetchEmailPreview = async (step: number, regenerate: boolean = false) => {
+    // If we have a cached preview and not regenerating, just show the modal
+    if (!regenerate && previewCache[step]) {
+      setPreviewingStep(step);
+      setPreviewError(null);
+      return;
+    }
+
+    setPreviewLoading(true);
+    setPreviewError(null);
+    setPreviewingStep(step);
+    
+    try {
+      const response = await fetch(`${COMPOSE_API_URL}/api/compose/preview`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contact_id: contactId,
+          campaign_id: campaignId,
+          sequence_step: step,
+          regenerate,
+        }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || "Failed to load preview");
+      }
+      
+      const data = await response.json();
+      // Cache the preview for this step
+      setPreviewCache(prev => ({ ...prev, [step]: data }));
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : "Failed to load preview");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const closePreview = () => {
+    setPreviewingStep(null);
+    setPreviewError(null);
+    // Don't clear the cache - keep it for reopening
+  };
+
   const sortedMessages = [...messages].sort((a, b) => a.step - b.step);
 
   return (
@@ -172,7 +242,7 @@ export function EmailSequenceTimeline({
             const isCurrent = sequenceState?.current_step === msg.step;
 
             return (
-              <div key={msg.message_id} className="flex items-start gap-4">
+              <div key={msg.message_id || `step-${msg.step}`} className="flex items-start gap-4">
                 {/* Timeline connector */}
                 <div className="flex flex-col items-center">
                   <div
@@ -248,6 +318,20 @@ export function EmailSequenceTimeline({
                       <span>Cancelled</span>
                     ) : null}
                   </div>
+
+                  {/* Preview button for scheduled/draft emails */}
+                  {(msg.status === "scheduled" || msg.status === "draft") && (
+                    <button
+                      onClick={() => fetchEmailPreview(msg.step)}
+                      className="mt-2 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      Preview Email
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -271,6 +355,100 @@ export function EmailSequenceTimeline({
             </div>
           )}
       </div>
+
+      {/* Email Preview Modal */}
+      {previewingStep !== null && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-950 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Email Preview
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Step {previewingStep} • {emailPreview?.intent ? intentLabels[emailPreview.intent] || emailPreview.intent : "Loading..."}
+                </p>
+              </div>
+              <button
+                onClick={closePreview}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {previewLoading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <svg className="animate-spin h-8 w-8 text-slate-400 mb-3" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <p className="text-slate-500">Generating email preview...</p>
+                </div>
+              ) : previewError ? (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-400">{previewError}</p>
+                </div>
+              ) : emailPreview ? (
+                <div className="space-y-4">
+                  {/* Cached indicator */}
+                  {emailPreview.cached && (
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Loaded from cache</span>
+                    </div>
+                  )}
+
+                  {/* Subject */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
+                    <p className="text-xs text-slate-500 mb-1">Subject</p>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {emailPreview.subject}
+                    </p>
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
+                    <p className="text-xs text-slate-500 mb-2">Body</p>
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <div className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap text-sm leading-relaxed">
+                        {emailPreview.body}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex justify-between">
+              <button
+                onClick={() => previewingStep && fetchEmailPreview(previewingStep, true)}
+                disabled={previewLoading}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                <svg className={`w-4 h-4 ${previewLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Regenerate
+              </button>
+              <button
+                onClick={closePreview}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

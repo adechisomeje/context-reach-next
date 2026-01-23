@@ -16,12 +16,16 @@ export function useSequence(contactId: string, campaignId?: string) {
   const [data, setData] = useState<SequenceStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  const fetchSequence = useCallback(async () => {
+  const fetchSequence = useCallback(async (showLoading: boolean = false) => {
     if (!contactId) return;
     
     try {
-      setLoading(true);
+      // Only show loading spinner on initial load
+      if (showLoading) {
+        setLoading(true);
+      }
       setError(null);
       
       const url = campaignId
@@ -45,13 +49,15 @@ export function useSequence(contactId: string, campaignId?: string) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setLoading(false);
+      setIsInitialLoad(false);
     }
   }, [contactId, campaignId]);
 
   useEffect(() => {
-    fetchSequence();
-    // Poll every 30 seconds for updates
-    const interval = setInterval(fetchSequence, 30000);
+    // Show loading only on initial fetch
+    fetchSequence(true);
+    // Poll every 30 seconds for updates (without loading spinner)
+    const interval = setInterval(() => fetchSequence(false), 30000);
     return () => clearInterval(interval);
   }, [fetchSequence]);
 

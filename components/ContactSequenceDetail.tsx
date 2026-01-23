@@ -127,6 +127,8 @@ export function ContactSequenceDetail({
               <EmailSequenceTimeline
                 messages={sequenceData.messages}
                 sequenceState={sequenceData.sequence_state}
+                contactId={contact.id}
+                campaignId={campaignId}
                 onPause={pause}
                 onResume={resume}
                 onCancel={() => setShowCancelConfirm(true)}
