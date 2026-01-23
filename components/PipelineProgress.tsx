@@ -136,13 +136,15 @@ export function PipelineProgress({ status }: PipelineProgressProps) {
               </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-green-200">
-              <Link href={`/campaigns/${status.campaign_id}`}>
-                <Button className="w-full">
-                  📊 View Campaign Details & Analytics
-                </Button>
-              </Link>
-            </div>
+            {status.campaign_id && (
+              <div className="mt-4 pt-4 border-t border-green-200">
+                <Link href={`/campaigns/${status.campaign_id}`}>
+                  <Button className="w-full">
+                    📊 View Campaign Details & Analytics
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         )}
 

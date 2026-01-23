@@ -562,7 +562,7 @@ export default function CampaignDetailPage() {
                                     Details
                                   </button>
                                 )}
-                                {mode === "manual" && !seqStatus?.hasSequence && !msgStatus && (
+                                {!seqStatus?.hasSequence && !msgStatus && (
                                   <button
                                     onClick={() => setComposingContact(contact)}
                                     className="px-2 py-1 text-xs font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
@@ -643,6 +643,15 @@ export default function CampaignDetailPage() {
           contact={viewingSequenceContact}
           campaignId={campaignId}
           onClose={() => setViewingSequenceContact(null)}
+          onStartSequence={() => {
+            // Close the detail modal and open the sequence creator
+            setComposingContact(viewingSequenceContact);
+            setViewingSequenceContact(null);
+          }}
+          onSequenceChange={() => {
+            // Refresh campaign data when sequence is paused/resumed/cancelled
+            fetchCampaignData();
+          }}
         />
       )}
 

@@ -10,12 +10,16 @@ interface ContactSequenceDetailProps {
   contact: Contact;
   campaignId: string;
   onClose: () => void;
+  onStartSequence?: () => void;
+  onSequenceChange?: () => void;
 }
 
 export function ContactSequenceDetail({
   contact,
   campaignId,
   onClose,
+  onStartSequence,
+  onSequenceChange,
 }: ContactSequenceDetailProps) {
   const {
     data: sequenceData,
@@ -33,6 +37,17 @@ export function ContactSequenceDetail({
   const handleCancel = async () => {
     await cancel();
     setShowCancelConfirm(false);
+    onSequenceChange?.();
+  };
+
+  const handlePause = async () => {
+    await pause();
+    onSequenceChange?.();
+  };
+
+  const handleResume = async () => {
+    await resume();
+    onSequenceChange?.();
   };
 
   return (
@@ -119,7 +134,21 @@ export function ContactSequenceDetail({
                   />
                 </svg>
               </div>
-              <p className="text-slate-500">No active sequence for this contact</p>
+              <p className="text-slate-500 mb-4">No active sequence for this contact</p>
+              {onStartSequence && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onStartSequence();
+                  }}
+                  className="px-4 py-2 text-sm font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors inline-flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Start New Sequence
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -129,8 +158,8 @@ export function ContactSequenceDetail({
                 sequenceState={sequenceData.sequence_state}
                 contactId={contact.id}
                 campaignId={campaignId}
-                onPause={pause}
-                onResume={resume}
+                onPause={handlePause}
+                onResume={handleResume}
                 onCancel={() => setShowCancelConfirm(true)}
                 isLoading={sequenceLoading}
               />
