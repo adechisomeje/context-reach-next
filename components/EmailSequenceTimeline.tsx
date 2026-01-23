@@ -1,14 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { SequenceStep, MessageStatus, SequenceState } from "@/lib/types";
 
 interface EmailSequenceTimelineProps {
@@ -22,55 +13,55 @@ interface EmailSequenceTimelineProps {
 
 const statusConfig: Record<
   MessageStatus,
-  { label: string; color: string; icon: string; bgColor: string }
+  { label: string; color: string; bg: string; darkBg: string }
 > = {
   draft: {
     label: "Draft",
-    color: "text-gray-600",
-    icon: "📝",
-    bgColor: "bg-gray-100",
+    color: "text-slate-600 dark:text-slate-400",
+    bg: "bg-slate-100",
+    darkBg: "dark:bg-slate-800",
   },
   scheduled: {
     label: "Scheduled",
-    color: "text-blue-600",
-    icon: "🕐",
-    bgColor: "bg-blue-100",
+    color: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-100",
+    darkBg: "dark:bg-blue-900/30",
   },
   sent: {
     label: "Sent",
-    color: "text-yellow-600",
-    icon: "📤",
-    bgColor: "bg-yellow-100",
+    color: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-100",
+    darkBg: "dark:bg-amber-900/30",
   },
   delivered: {
     label: "Delivered",
-    color: "text-green-600",
-    icon: "✅",
-    bgColor: "bg-green-100",
+    color: "text-emerald-600 dark:text-emerald-400",
+    bg: "bg-emerald-100",
+    darkBg: "dark:bg-emerald-900/30",
   },
   bounced: {
     label: "Bounced",
-    color: "text-red-600",
-    icon: "❌",
-    bgColor: "bg-red-100",
+    color: "text-red-600 dark:text-red-400",
+    bg: "bg-red-100",
+    darkBg: "dark:bg-red-900/30",
   },
   replied: {
     label: "Replied",
-    color: "text-purple-600",
-    icon: "💬",
-    bgColor: "bg-purple-100",
+    color: "text-purple-600 dark:text-purple-400",
+    bg: "bg-purple-100",
+    darkBg: "dark:bg-purple-900/30",
   },
   failed: {
     label: "Failed",
-    color: "text-red-600",
-    icon: "⚠️",
-    bgColor: "bg-red-100",
+    color: "text-red-600 dark:text-red-400",
+    bg: "bg-red-100",
+    darkBg: "dark:bg-red-900/30",
   },
   cancelled: {
     label: "Cancelled",
-    color: "text-gray-500",
-    icon: "🚫",
-    bgColor: "bg-gray-100",
+    color: "text-slate-500 dark:text-slate-500",
+    bg: "bg-slate-100",
+    darkBg: "dark:bg-slate-800",
   },
 };
 
@@ -100,14 +91,12 @@ function formatRelativeTime(dateString: string): string {
   const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
   if (diffMs < 0) {
-    // In the past
     const absDays = Math.abs(diffDays);
     const absHours = Math.abs(diffHours);
     if (absDays > 0) return `${absDays} day${absDays > 1 ? "s" : ""} ago`;
     if (absHours > 0) return `${absHours} hour${absHours > 1 ? "s" : ""} ago`;
     return "just now";
   } else {
-    // In the future
     if (diffDays > 0) return `in ${diffDays} day${diffDays > 1 ? "s" : ""}`;
     if (diffHours > 0) return `in ${diffHours} hour${diffHours > 1 ? "s" : ""}`;
     return "soon";
@@ -125,56 +114,57 @@ export function EmailSequenceTimeline({
   const sortedMessages = [...messages].sort((a, b) => a.step - b.step);
 
   return (
-    <Card>
-      <CardHeader>
+    <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg">Email Sequence</CardTitle>
-            <CardDescription>
+            <h3 className="text-sm font-medium text-slate-900 dark:text-white">
+              Email Sequence
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
               {sequenceState?.reply_detected
-                ? "🎉 Reply detected - sequence stopped"
+                ? "Reply detected - sequence stopped"
                 : sequenceState?.is_paused
-                ? "⏸️ Sequence paused"
+                ? "Sequence paused"
                 : `Step ${sequenceState?.current_step || 1} of ${messages.length}`}
-            </CardDescription>
+            </p>
           </div>
           <div className="flex gap-2">
             {sequenceState && !sequenceState.reply_detected && (
               <>
                 {sequenceState.is_paused ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
                     onClick={onResume}
                     disabled={isLoading}
+                    className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
                   >
-                    ▶️ Resume
-                  </Button>
+                    Resume
+                  </button>
                 ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
                     onClick={onPause}
                     disabled={isLoading}
+                    className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
                   >
-                    ⏸️ Pause
-                  </Button>
+                    Pause
+                  </button>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
                   onClick={onCancel}
                   disabled={isLoading}
-                  className="text-red-600 hover:text-red-700"
+                  className="px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
                 >
                   Cancel
-                </Button>
+                </button>
               </>
             )}
           </div>
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+
+      {/* Timeline */}
+      <div className="p-4">
         <div className="space-y-4">
           {sortedMessages.map((msg, idx) => {
             const config = statusConfig[msg.status] || statusConfig.draft;
@@ -186,20 +176,22 @@ export function EmailSequenceTimeline({
                 {/* Timeline connector */}
                 <div className="flex flex-col items-center">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
-                      config.bgColor
-                    } ${isCurrent ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${config.bg} ${config.darkBg} ${config.color} ${
+                      isCurrent
+                        ? "ring-2 ring-slate-900 dark:ring-white ring-offset-2 dark:ring-offset-slate-950"
+                        : ""
+                    }`}
                   >
-                    {config.icon}
+                    {msg.step}
                   </div>
                   {!isLast && (
                     <div
-                      className={`w-0.5 h-12 mt-1 ${
+                      className={`w-0.5 h-10 mt-1 ${
                         msg.status === "sent" ||
                         msg.status === "delivered" ||
                         msg.status === "replied"
-                          ? "bg-green-300"
-                          : "bg-gray-200"
+                          ? "bg-emerald-300 dark:bg-emerald-700"
+                          : "bg-slate-200 dark:bg-slate-700"
                       }`}
                     />
                   )}
@@ -207,52 +199,53 @@ export function EmailSequenceTimeline({
 
                 {/* Message card */}
                 <div
-                  className={`flex-1 p-4 border rounded-lg ${
-                    isCurrent ? "border-blue-300 bg-blue-50/50" : ""
+                  className={`flex-1 p-3 border rounded-lg ${
+                    isCurrent
+                      ? "border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-900"
+                      : "border-slate-200 dark:border-slate-800"
                   }`}
                 >
-                  <div className="flex justify-between items-start gap-4">
+                  <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium text-gray-500">
-                          Step {msg.step}
-                        </span>
-                        <Badge variant="outline" className="text-xs">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.darkBg} ${config.color}`}
+                        >
                           {intentLabels[msg.intent] || msg.intent}
-                        </Badge>
+                        </span>
                       </div>
-                      <h4 className="font-medium text-gray-900 truncate">
+                      <h4 className="font-medium text-slate-900 dark:text-white truncate text-sm">
                         {msg.subject}
                       </h4>
                     </div>
-                    <Badge
-                      className={`${config.bgColor} ${config.color} border-0 whitespace-nowrap`}
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${config.bg} ${config.darkBg} ${config.color}`}
                     >
                       {config.label}
-                    </Badge>
+                    </span>
                   </div>
 
                   {/* Timing info */}
-                  <div className="mt-3 text-sm text-gray-600">
+                  <div className="mt-2 text-xs text-slate-500">
                     {msg.status === "scheduled" ? (
-                      <div className="flex items-center gap-2">
-                        <span>📅 Scheduled for:</span>
-                        <span className="font-medium">
+                      <div className="flex items-center gap-1">
+                        <span>Scheduled:</span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">
                           {formatDateTime(msg.scheduled_send_at)}
                         </span>
-                        <span className="text-gray-400">
+                        <span className="text-slate-400">
                           ({formatRelativeTime(msg.scheduled_send_at)})
                         </span>
                       </div>
                     ) : msg.sent_at ? (
-                      <div className="flex items-center gap-2">
-                        <span>✅ Sent:</span>
-                        <span className="font-medium">
+                      <div className="flex items-center gap-1">
+                        <span>Sent:</span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">
                           {formatDateTime(msg.sent_at)}
                         </span>
                       </div>
                     ) : msg.status === "cancelled" ? (
-                      <span className="text-gray-500">Cancelled</span>
+                      <span>Cancelled</span>
                     ) : null}
                   </div>
                 </div>
@@ -265,17 +258,19 @@ export function EmailSequenceTimeline({
         {sequenceState?.next_send_window &&
           !sequenceState.is_paused &&
           !sequenceState.reply_detected && (
-            <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-700">
+            <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 <span className="font-medium">Next email scheduled:</span>{" "}
-                {formatDateTime(sequenceState.next_send_window)}
-                <span className="text-blue-500 ml-2">
+                <span className="text-slate-900 dark:text-white">
+                  {formatDateTime(sequenceState.next_send_window)}
+                </span>
+                <span className="text-slate-500 ml-1">
                   ({formatRelativeTime(sequenceState.next_send_window)})
                 </span>
               </p>
             </div>
           )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

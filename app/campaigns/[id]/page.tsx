@@ -3,24 +3,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Campaign, CampaignContactsResponse, Contact, ContextResearchResponse, Message, MessagesResponse } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { ContextResearchPanel } from "@/components/ContextResearchPanel";
@@ -56,10 +38,10 @@ export default function CampaignDetailPage() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [contactResearch, setContactResearch] = useState<Record<string, ContextResearchResponse>>({});
   
-  // Messages state (for showing scheduled/sent status)
+  // Messages state
   const [contactMessages, setContactMessages] = useState<Record<string, Message[]>>({});
   
-  // Sequence status state (tracks which contacts have active sequences)
+  // Sequence status state
   const [contactSequences, setContactSequences] = useState<Record<string, { hasSequence: boolean; status?: string }>>({});
   
   // Email Composer / Sequence state
@@ -85,7 +67,6 @@ export default function CampaignDetailPage() {
     setError(null);
 
     try {
-      // Fetch campaign details
       const campaignResponse = await authFetch(API_URL + "/api/campaigns/" + campaignId);
       if (!campaignResponse.ok) {
         throw new Error("Failed to fetch campaign: " + campaignResponse.status);
@@ -93,7 +74,6 @@ export default function CampaignDetailPage() {
       const campaignData: Campaign = await campaignResponse.json();
       setCampaign(campaignData);
 
-      // Fetch campaign contacts with intelligence status
       const contactsResponse = await authFetch(
         API_URL + "/api/campaigns/" + campaignId + "/contacts?limit=50&offset=0&include_intelligence=true"
       );
@@ -104,14 +84,12 @@ export default function CampaignDetailPage() {
       setContacts(contactsData.contacts);
       setTotalContacts(contactsData.total);
 
-      // Fetch messages for this campaign to show scheduled/sent status
       try {
         const messagesResponse = await authFetch(
           COMPOSE_API_URL + "/api/messages?campaign_id=" + campaignId
         );
         if (messagesResponse.ok) {
           const messagesData: MessagesResponse = await messagesResponse.json();
-          // Group messages by contact_id
           const messagesByContact: Record<string, Message[]> = {};
           messagesData.messages.forEach((msg) => {
             if (!messagesByContact[msg.contact_id]) {
@@ -122,14 +100,10 @@ export default function CampaignDetailPage() {
           setContactMessages(messagesByContact);
         }
       } catch (msgErr) {
-        // Messages fetch is non-critical, just log it
         console.warn("Could not fetch messages:", msgErr);
       }
 
-      // Fetch sequence status for ALL contacts to properly hide/show Sequence button
-      // This helps identify auto-mode sequences
       const sequenceStatuses: Record<string, { hasSequence: boolean; status?: string }> = {};
-      
       await Promise.all(
         contactsData.contacts.map(async (contact) => {
           try {
@@ -139,17 +113,14 @@ export default function CampaignDetailPage() {
             if (seqResponse.ok) {
               const seqData = await seqResponse.json();
               const isPaused = seqData.sequence_state?.is_paused;
-              // A sequence exists if we get a 200 response (even without messages, the sequence record exists)
               sequenceStatuses[contact.id] = {
                 hasSequence: true,
                 status: isPaused ? "paused" : "active",
               };
             } else if (seqResponse.status === 404) {
-              // No sequence exists
               sequenceStatuses[contact.id] = { hasSequence: false };
             }
           } catch (seqErr) {
-            // Non-critical, assume no sequence
             sequenceStatuses[contact.id] = { hasSequence: false };
           }
         })
@@ -169,10 +140,8 @@ export default function CampaignDetailPage() {
     }
   }, [campaignId]);
 
-  // Initiate Context Research for a contact
   const handleResearch = async (contact: Contact) => {
     if (!campaign) return;
-    
     setResearchingContactId(contact.id);
     setResearchError(null);
 
@@ -195,12 +164,7 @@ export default function CampaignDetailPage() {
       }
 
       const data: ContextResearchResponse = await response.json();
-      
-      // Store the research result (don't auto-open modal)
-      setContactResearch((prev) => ({
-        ...prev,
-        [contact.id]: data,
-      }));
+      setContactResearch((prev) => ({ ...prev, [contact.id]: data }));
     } catch (err) {
       console.error("Research failed:", err);
       setResearchError(err instanceof Error ? err.message : "Failed to initiate research");
@@ -209,9 +173,7 @@ export default function CampaignDetailPage() {
     }
   };
 
-  // View existing research for a contact
   const handleViewResearch = async (contact: Contact) => {
-    // First check local state
     const research = contactResearch[contact.id];
     if (research) {
       setSelectedResearch(research);
@@ -219,32 +181,19 @@ export default function CampaignDetailPage() {
       return;
     }
 
-    // If contact has research on backend but not locally, fetch it
     if (contact.has_research) {
       try {
-        const response = await authFetch(
-          `${CONTEXT_API_URL}/api/context/${contact.id}`
-        );
-        
+        const response = await authFetch(`${CONTEXT_API_URL}/api/context/${contact.id}`);
         if (response.ok) {
           const data = await response.json();
-          // The response has { source, context: { ... } } structure
-          // Extract the context object which contains the research data
           const intelligenceData = data.context || data;
-          
-          // Store in local state for future use
-          setContactResearch((prev) => ({
-            ...prev,
-            [contact.id]: intelligenceData,
-          }));
+          setContactResearch((prev) => ({ ...prev, [contact.id]: intelligenceData }));
           setSelectedResearch(intelligenceData);
           setSelectedContact(contact);
         } else {
-          console.error("Failed to fetch intelligence:", response.status);
-          setResearchError("Could not load research data. The research may still be processing.");
+          setResearchError("Could not load research data.");
         }
       } catch (err) {
-        console.error("Error fetching intelligence:", err);
         setResearchError("Error loading research data");
       }
     }
@@ -255,7 +204,6 @@ export default function CampaignDetailPage() {
     setSelectedContact(null);
   };
 
-  // Delete campaign
   const handleDeleteCampaign = async () => {
     setIsDeleting(true);
     try {
@@ -263,15 +211,11 @@ export default function CampaignDetailPage() {
         `${API_URL}/api/campaigns/${campaignId}?delete_contacts=${deleteContacts}`,
         { method: "DELETE" }
       );
-
       if (!response.ok) {
         throw new Error("Failed to delete campaign: " + response.status);
       }
-
-      // Redirect to campaigns list
       router.push("/campaigns");
     } catch (err) {
-      console.error("Delete failed:", err);
       setError(err instanceof Error ? err.message : "Failed to delete campaign");
       setShowDeleteModal(false);
     } finally {
@@ -279,20 +223,15 @@ export default function CampaignDetailPage() {
     }
   };
 
-  // Check if contact has research (from backend or local state)
   const hasResearch = (contact: Contact): boolean => {
     return contact.has_research === true || !!contactResearch[contact.id];
   };
 
-  // Get the latest message status for a contact
   const getContactMessageStatus = (contactId: string): { status: string; count: number } | null => {
     const messages = contactMessages[contactId];
     if (!messages || messages.length === 0) return null;
-    
-    // Count by status
     const scheduled = messages.filter(m => m.status === "scheduled").length;
     const sent = messages.filter(m => m.status === "sent" || m.status === "delivered").length;
-    
     if (sent > 0) return { status: "sent", count: sent };
     if (scheduled > 0) return { status: "scheduled", count: scheduled };
     return null;
@@ -304,35 +243,43 @@ export default function CampaignDetailPage() {
     return (first + last).toUpperCase() || "?";
   };
 
-  const getStatusBadge = (status: Campaign["status"]) => {
+  const getStatusStyle = (status: Campaign["status"]) => {
     switch (status) {
       case "completed":
-        return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
+        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
       case "processing":
-        return <Badge className="bg-blue-100 text-blue-800">Processing</Badge>;
+        return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
       case "failed":
-        return <Badge className="bg-red-100 text-red-800">Failed</Badge>;
+        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
       default:
-        return <Badge className="bg-slate-100 text-slate-800">Pending</Badge>;
+        return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
     }
   };
 
-  const getConfidenceBadge = (confidence: number) => {
-    if (confidence >= 80) {
-      return <Badge className="bg-green-100 text-green-800">High ({confidence}%)</Badge>;
-    } else if (confidence >= 50) {
-      return <Badge className="bg-yellow-100 text-yellow-800">Medium ({confidence}%)</Badge>;
+  const getStatusLabel = (status: Campaign["status"]) => {
+    switch (status) {
+      case "completed": return "Completed";
+      case "processing": return "Processing";
+      case "failed": return "Failed";
+      default: return "Pending";
     }
-    return <Badge className="bg-red-100 text-red-800">Low ({confidence}%)</Badge>;
+  };
+
+  const getConfidenceStyle = (confidence: number) => {
+    if (confidence >= 80) return "text-emerald-600 dark:text-emerald-400";
+    if (confidence >= 50) return "text-amber-600 dark:text-amber-400";
+    return "text-red-600 dark:text-red-400";
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center py-24">
-            <div className="text-slate-500">Loading campaign...</div>
-          </div>
+      <div className="h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+        <div className="flex items-center gap-3 text-slate-500">
+          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Loading campaign...
         </div>
       </div>
     );
@@ -340,436 +287,330 @@ export default function CampaignDetailPage() {
 
   if (error || !campaign) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+      <div className="h-screen flex flex-col bg-white dark:bg-slate-950 p-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm mb-4">
             {error || "Campaign not found"}
           </div>
-          <Link href="/campaigns" className="mt-4 inline-block">
-            <Button variant="outline">← Back to Campaigns</Button>
+          <Link href="/campaigns">
+            <button className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+              ← Back to Campaigns
+            </button>
           </Link>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Breadcrumb */}
-        <div className="mb-6">
-          <Link
-            href="/campaigns"
-            className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-          >
-            ← Back to Campaigns
-          </Link>
-        </div>
+  const enrichmentRate = campaign.total_contacts > 0
+    ? Math.round((campaign.enriched_contacts / campaign.total_contacts) * 100)
+    : 0;
 
-        {/* Campaign Header */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-                  {campaign.name}
-                </h1>
-                {getStatusBadge(campaign.status)}
+  return (
+    <div className="h-screen flex flex-col bg-white dark:bg-slate-950">
+      {/* Page Header */}
+      <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-800">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link href="/campaigns" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </Link>
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{campaign.name}</h1>
+                  <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${getStatusStyle(campaign.status)}`}>
+                    {getStatusLabel(campaign.status)}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-xl">
+                  {campaign.solution_description}
+                </p>
               </div>
-              <p className="text-slate-600 dark:text-slate-400 max-w-3xl">
-                {campaign.solution_description}
-              </p>
             </div>
-            {/* Delete Button */}
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={() => setShowDeleteModal(true)}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
             >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
               Delete
-            </Button>
+            </button>
           </div>
         </div>
 
-        {/* Campaign Details Card */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Stats */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Contacts</CardDescription>
-              <CardTitle className="text-3xl">{campaign.total_contacts}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Enriched</CardDescription>
-              <CardTitle className="text-3xl">{campaign.enriched_contacts}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Enrichment Rate</CardDescription>
-              <CardTitle className="text-3xl">
-                {campaign.total_contacts > 0
-                  ? Math.round((campaign.enriched_contacts / campaign.total_contacts) * 100)
-                  : 0}
-                %
-              </CardTitle>
-            </CardHeader>
-          </Card>
+        {/* Stats Bar */}
+        <div className="px-6 py-3 flex items-center gap-6 border-t border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500">Contacts:</span>
+            <span className="text-sm font-medium text-slate-900 dark:text-white">{campaign.total_contacts}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500">Enriched:</span>
+            <span className="text-sm font-medium text-slate-900 dark:text-white">{campaign.enriched_contacts}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500">Rate:</span>
+            <span className="text-sm font-medium text-slate-900 dark:text-white">{enrichmentRate}%</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500">Mode:</span>
+            <span className="text-sm font-medium text-slate-900 dark:text-white">
+              {campaign.mode === "auto" ? "⚡ Auto" : "Manual"}
+            </span>
+          </div>
         </div>
 
-        {/* Target Criteria */}
-        {campaign.target_criteria && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Target Criteria</CardTitle>
-              <CardDescription>AI-generated targeting for this campaign</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Job Titles */}
-                <div>
-                  <span className="text-xs text-slate-500 uppercase tracking-wide">
-                    Job Titles
-                  </span>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {campaign.target_criteria.job_titles.map((title) => (
-                      <Badge key={title} variant="secondary">
-                        {title}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
+        {/* Tabs */}
+        <div className="px-6 py-2 flex items-center gap-4 border-t border-slate-100 dark:border-slate-800/50">
+          <button
+            onClick={() => setActiveTab("contacts")}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "contacts"
+                ? "border-slate-900 dark:border-white text-slate-900 dark:text-white"
+                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+            }`}
+          >
+            Contacts ({totalContacts})
+          </button>
+          <button
+            onClick={() => setActiveTab("analytics")}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "analytics"
+                ? "border-slate-900 dark:border-white text-slate-900 dark:text-white"
+                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+            }`}
+          >
+            Analytics
+          </button>
+          <div className="flex-1" />
+          <button
+            onClick={fetchCampaignData}
+            className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
 
-                {/* Industries */}
-                <div>
-                  <span className="text-xs text-slate-500 uppercase tracking-wide">
-                    Industries
-                  </span>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {campaign.target_criteria.industries.map((industry) => (
-                      <Badge key={industry} variant="outline">
-                        {industry}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Company Sizes */}
-                <div>
-                  <span className="text-xs text-slate-500 uppercase tracking-wide">
-                    Company Sizes
-                  </span>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {campaign.target_criteria.company_sizes.map((size) => (
-                      <Badge key={size} variant="outline">
-                        {size}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Pain Points */}
-                {campaign.target_criteria.pain_points && campaign.target_criteria.pain_points.length > 0 && (
+      {/* Content */}
+      <div className="flex-1 overflow-auto">
+        {activeTab === "analytics" ? (
+          <CampaignAnalyticsDashboard analytics={analytics} loading={analyticsLoading} />
+        ) : (
+          <>
+            {/* Target Criteria (collapsible) */}
+            {campaign.target_criteria && (
+              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 bg-slate-50/30 dark:bg-slate-900/30">
+                <div className="flex items-start gap-6 text-sm">
                   <div>
-                    <span className="text-xs text-slate-500 uppercase tracking-wide">
-                      Pain Points
-                    </span>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {campaign.target_criteria.pain_points.map((point) => (
-                        <Badge
-                          key={point}
-                          variant="secondary"
-                          className="bg-amber-100 text-amber-800"
-                        >
-                          {point}
-                        </Badge>
+                    <span className="text-slate-500">Job Titles:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {campaign.target_criteria.job_titles.slice(0, 3).map((title) => (
+                        <span key={title} className="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-xs text-slate-700 dark:text-slate-300">
+                          {title}
+                        </span>
+                      ))}
+                      {campaign.target_criteria.job_titles.length > 3 && (
+                        <span className="px-2 py-0.5 text-xs text-slate-500">
+                          +{campaign.target_criteria.job_titles.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Industries:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {campaign.target_criteria.industries.slice(0, 2).map((industry) => (
+                        <span key={industry} className="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-xs text-slate-700 dark:text-slate-300">
+                          {industry}
+                        </span>
                       ))}
                     </div>
                   </div>
-                )}
-              </div>
-
-              {/* AI Reasoning */}
-              {campaign.reasoning && (
-                <div className="mt-6 pt-6 border-t">
-                  <span className="text-xs text-slate-500 uppercase tracking-wide">
-                    AI Reasoning
-                  </span>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 italic">
-                    {campaign.reasoning}
-                  </p>
+                  <div>
+                    <span className="text-slate-500">Company Sizes:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {campaign.target_criteria.company_sizes.map((size) => (
+                        <span key={size} className="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-xs text-slate-700 dark:text-slate-300">
+                          {size}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Tabs for Contacts / Analytics */}
-        <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg w-fit">
-          <Button
-            variant={activeTab === "contacts" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("contacts")}
-          >
-            👥 Contacts ({totalContacts})
-          </Button>
-          <Button
-            variant={activeTab === "analytics" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("analytics")}
-          >
-            📊 Analytics
-          </Button>
-        </div>
-
-        {/* Analytics Dashboard */}
-        {activeTab === "analytics" && (
-          <CampaignAnalyticsDashboard
-            analytics={analytics}
-            loading={analyticsLoading}
-          />
-        )}
-
-        {/* Contacts Table */}
-        {activeTab === "contacts" && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Campaign Contacts</CardTitle>
-                <CardDescription>
-                  {totalContacts} contacts discovered for this campaign
-                </CardDescription>
               </div>
-              <Button variant="outline" onClick={fetchCampaignData}>
-                Refresh
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
+            )}
+
+            {/* Contacts Table */}
             {contacts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="text-slate-400 mb-2">
-                  <svg
-                    className="w-12 h-12 mx-auto"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                    />
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                  <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
-                <p className="text-slate-600 dark:text-slate-400">
-                  No contacts found yet
-                </p>
+                <p className="text-slate-900 dark:text-white font-medium mb-1">No contacts yet</p>
                 <p className="text-sm text-slate-500">
-                  {campaign.status === "processing"
-                    ? "Discovery is still in progress..."
-                    : "No contacts were discovered for this campaign"}
+                  {campaign.status === "processing" ? "Discovery is still in progress..." : "No contacts were discovered"}
                 </p>
               </div>
             ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Match Score</TableHead>
-                      <TableHead>Confidence</TableHead>
-                      <TableHead>Status / Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {contacts.map((contact) => (
-                      <TableRow key={contact.id}>
-                        <TableCell>
+              <table className="w-full">
+                <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Contact</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Title</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Company</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Match</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {contacts.map((contact) => {
+                    const msgStatus = getContactMessageStatus(contact.id);
+                    const seqStatus = contactSequences[contact.id];
+                    const isResearched = hasResearch(contact);
+
+                    return (
+                      <tr key={contact.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                        <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9">
-                              <AvatarFallback className="bg-slate-200 text-slate-600 text-xs">
+                            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
                                 {getInitials(contact.first_name, contact.last_name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="font-medium">
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-medium text-slate-900 dark:text-white">
                                 {contact.first_name} {contact.last_name}
                               </div>
                               {contact.linkedin_url && (
-                                <a
-                                  href={contact.linkedin_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-blue-600 hover:underline"
-                                >
+                                <a href={contact.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
                                   LinkedIn
                                 </a>
                               )}
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-slate-600 dark:text-slate-400">
-                            {contact.title || "—"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {contact.company_name || "—"}
-                            </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">{contact.title || "—"}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-slate-900 dark:text-white">{contact.company_name || "—"}</div>
                             {contact.company_domain && (
-                              <span className="text-xs text-slate-500">
-                                {contact.company_domain}
+                              <span className="text-xs text-slate-500">{contact.company_domain}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {contact.email ? (
+                            <div>
+                              <a href={`mailto:${contact.email}`} className="text-sm text-blue-600 hover:underline">
+                                {contact.email}
+                              </a>
+                              <div className={`text-xs ${getConfidenceStyle(contact.email_confidence)}`}>
+                                {contact.email_confidence}% confidence
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-slate-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-medium text-slate-900 dark:text-white">
+                            {contact.persona_match_score}%
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {isResearched && (
+                              <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                Researched
+                              </span>
+                            )}
+                            {msgStatus?.status === "sent" && (
+                              <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                Sent ({msgStatus.count})
+                              </span>
+                            )}
+                            {(msgStatus?.status === "scheduled" || (seqStatus?.hasSequence && msgStatus?.status !== "sent")) && (
+                              <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                Scheduled
                               </span>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {contact.email ? (
-                            <a
-                              href={`mailto:${contact.email}`}
-                              className="text-sm text-blue-600 hover:underline"
-                            >
-                              {contact.email}
-                            </a>
-                          ) : (
-                            <span className="text-sm text-slate-400">
-                              Not available
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {contact.persona_match_score}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {getConfidenceBadge(contact.email_confidence)}
-                        </TableCell>
-                        <TableCell>
-                          {hasResearch(contact) ? (
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge className="bg-green-100 text-green-800">
-                                ✓ Researched
-                              </Badge>
-                              {(() => {
-                                const msgStatus = getContactMessageStatus(contact.id);
-                                const seqStatus = contactSequences[contact.id];
-                                
-                                if (msgStatus?.status === "sent") {
-                                  return (
-                                    <Badge 
-                                      className="bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
-                                      onClick={() => setViewingSequenceContact(contact)}
-                                    >
-                                      ✅ Sent ({msgStatus.count})
-                                    </Badge>
-                                  );
-                                }
-                                if (msgStatus?.status === "scheduled" || seqStatus?.hasSequence) {
-                                  return (
-                                    <Badge 
-                                      className="bg-amber-100 text-amber-800 cursor-pointer hover:bg-amber-200"
-                                      onClick={() => setViewingSequenceContact(contact)}
-                                    >
-                                      📧 Scheduled {msgStatus?.count ? `(${msgStatus.count})` : ""}
-                                    </Badge>
-                                  );
-                                }
-                                return null;
-                              })()}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewResearch(contact)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            {isResearched ? (
+                              <>
+                                <button
+                                  onClick={() => handleViewResearch(contact)}
+                                  className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                >
+                                  View
+                                </button>
+                                {(seqStatus?.hasSequence || msgStatus) && (
+                                  <button
+                                    onClick={() => setViewingSequenceContact(contact)}
+                                    className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                  >
+                                    Details
+                                  </button>
+                                )}
+                                {mode === "manual" && !seqStatus?.hasSequence && !msgStatus && (
+                                  <button
+                                    onClick={() => setComposingContact(contact)}
+                                    className="px-2 py-1 text-xs font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+                                  >
+                                    Sequence
+                                  </button>
+                                )}
+                              </>
+                            ) : mode === "manual" ? (
+                              <button
+                                onClick={() => handleResearch(contact)}
+                                disabled={researchingContactId === contact.id}
+                                className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
                               >
-                                View
-                              </Button>
-                              {/* Show sequence details for any contact with sequence (auto or manual) */}
-                              {(contactSequences[contact.id]?.hasSequence || getContactMessageStatus(contact.id)) && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setViewingSequenceContact(contact)}
-                                >
-                                  📊 Details
-                                </Button>
-                              )}
-                              {/* Only show create sequence button if no sequence exists */}
-                              {mode === "manual" && !contactSequences[contact.id]?.hasSequence && !getContactMessageStatus(contact.id) && (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => setComposingContact(contact)}
-                                >
-                                  🚀 Sequence
-                                </Button>
-                              )}
-                            </div>
-                          ) : mode === "manual" ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleResearch(contact)}
-                              disabled={researchingContactId === contact.id}
-                            >
-                              {researchingContactId === contact.id ? (
-                                <>
-                                  <span className="animate-spin mr-1">⏳</span>
-                                  Researching...
-                                </>
-                              ) : (
-                                <>🔍 Research</>
-                              )}
-                            </Button>
-                          ) : (
-                            <span className="text-sm text-slate-400">Pending</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                                {researchingContactId === contact.id ? "Researching..." : "Research"}
+                              </button>
+                            ) : (
+                              <span className="text-xs text-slate-400">Pending</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
-          </CardContent>
-        </Card>
-        )}
-
-        {/* Research Error */}
-        {researchError && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
-            <div className="flex items-start gap-2">
-              <span>❌</span>
-              <div>
-                <p className="font-medium">Research Failed</p>
-                <p>{researchError}</p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2"
-              onClick={() => setResearchError(null)}
-            >
-              Dismiss
-            </Button>
-          </div>
+          </>
         )}
       </div>
+
+      {/* Research Error Toast */}
+      {researchError && (
+        <div className="fixed bottom-4 right-4 p-4 bg-red-50 dark:bg-red-900/90 border border-red-200 dark:border-red-800 rounded-lg shadow-lg max-w-sm">
+          <div className="flex items-start gap-3">
+            <span className="text-red-500">✕</span>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800 dark:text-red-200">Research Failed</p>
+              <p className="text-sm text-red-700 dark:text-red-300">{researchError}</p>
+            </div>
+            <button onClick={() => setResearchError(null)} className="text-red-500 hover:text-red-700">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Context Research Panel */}
       {selectedResearch && selectedContact && (
@@ -779,14 +620,11 @@ export default function CampaignDetailPage() {
           campaignId={campaignId}
           onClose={closeResearchPanel}
           onEmailScheduled={fetchCampaignData}
-          hasSequence={
-            contactSequences[selectedContact.id]?.hasSequence || 
-            !!getContactMessageStatus(selectedContact.id)
-          }
+          hasSequence={contactSequences[selectedContact.id]?.hasSequence || !!getContactMessageStatus(selectedContact.id)}
         />
       )}
 
-      {/* Email Composer (Direct from contact row) */}
+      {/* Email Composer */}
       {composingContact && (
         <SequenceCreator
           contact={composingContact}
@@ -794,7 +632,6 @@ export default function CampaignDetailPage() {
           onClose={() => setComposingContact(null)}
           onSequenceCreated={() => {
             setComposingContact(null);
-            // Refresh data to show updated message status
             fetchCampaignData();
           }}
         />
@@ -811,71 +648,56 @@ export default function CampaignDetailPage() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Delete Campaign</h3>
+                  <p className="text-sm text-slate-500">This action cannot be undone</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  Delete Campaign
-                </h3>
-                <p className="text-sm text-slate-500">
-                  This action cannot be undone
-                </p>
-              </div>
+
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                Are you sure you want to delete <span className="font-medium">"{campaign?.name}"</span>?
+              </p>
+
+              <label className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg cursor-pointer mb-6">
+                <input
+                  type="checkbox"
+                  checked={deleteContacts}
+                  onChange={(e) => setDeleteContacts(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
+                />
+                <div>
+                  <span className="text-sm font-medium text-slate-900 dark:text-white">Also delete all contacts</span>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {totalContacts} contacts will be permanently deleted.
+                  </p>
+                </div>
+              </label>
             </div>
 
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-              Are you sure you want to delete <span className="font-medium">"{campaign?.name}"</span>?
-            </p>
-
-            {/* Delete contacts checkbox */}
-            <label className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg cursor-pointer mb-6">
-              <input
-                type="checkbox"
-                checked={deleteContacts}
-                onChange={(e) => setDeleteContacts(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
-              />
-              <div>
-                <span className="text-sm font-medium text-slate-900 dark:text-white">
-                  Also delete all contacts
-                </span>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {totalContacts} contacts will be permanently deleted. Uncheck to keep contacts but unlink them from this campaign.
-                </p>
-              </div>
-            </label>
-
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setDeleteContacts(true);
-                }}
+            <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeleteContacts(true); }}
                 disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
                 Cancel
-              </Button>
-              <Button
-                variant="destructive"
+              </button>
+              <button
                 onClick={handleDeleteCampaign}
                 disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                {isDeleting ? (
-                  <>
-                    <span className="animate-spin mr-2">⏳</span>
-                    Deleting...
-                  </>
-                ) : (
-                  "Delete Campaign"
-                )}
-              </Button>
+                {isDeleting ? "Deleting..." : "Delete Campaign"}
+              </button>
             </div>
           </div>
         </div>

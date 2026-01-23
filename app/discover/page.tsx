@@ -3,19 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -215,195 +202,217 @@ export default function DiscoverPage() {
   // Form Step
   if (step === "form") {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-6">
-            <Link href="/" className="text-sm text-slate-500 hover:text-slate-700">
-              ← Back to Dashboard
-            </Link>
-          </div>
-
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-              New Discovery
-            </h1>
-            <p className="text-slate-600 dark:text-slate-400">
-              Describe your solution and we'll find your ideal prospects
-            </p>
-          </div>
-
-          {/* Mode Toggle */}
-          <div className="mb-6">
-            <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg w-fit">
-              <Button
-                variant={mode === "auto" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => handleModeChange("auto")}
-                className="gap-2"
-              >
-                🚀 Auto Mode
-              </Button>
-              <Button
-                variant={mode === "manual" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => handleModeChange("manual")}
-                className="gap-2"
-              >
-                🎛️ Manual Mode
-              </Button>
+      <div className="h-screen flex flex-col bg-white dark:bg-slate-950">
+        {/* Page Header */}
+        <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-800">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-semibold text-slate-900 dark:text-white">New Discovery</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Find leads matching your ideal customer profile
+                </p>
+              </div>
+              <Link href="/campaigns">
+                <button className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
+                  Cancel
+                </button>
+              </Link>
             </div>
-            <p className="text-sm text-slate-500 mt-2">
-              {mode === "auto" ? (
-                <>
-                  <strong>Auto Mode:</strong> One click starts the entire pipeline
-                  — discovery, research, email composition, and scheduling all happen
-                  automatically.
-                </>
-              ) : (
-                <>
-                  <strong>Manual Mode:</strong> Control each step of the process.
-                  Review data between steps and trigger actions when ready.
-                </>
-              )}
-            </p>
           </div>
+        </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Describe Your Solution</CardTitle>
-              <CardDescription>
-                Be specific about what problem you solve and who you help
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="solution">Solution Description</Label>
-                <Textarea
-                  id="solution"
-                  placeholder="Example: biometric identity platform for securing distributed operations and eliminating fraud..."
-                  value={solution}
-                  onChange={(e) => setSolution(e.target.value)}
-                  className="min-h-[180px] resize-none text-base"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="maxContacts">Max Contacts</Label>
-                  <Input
-                    id="maxContacts"
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={maxContacts}
-                    onChange={handleContactsChange}
-                  />
-                  <p className="text-xs text-slate-500">Maximum 50</p>
+        {/* Content */}
+        <div className="flex-1 overflow-auto">
+          <div className="max-w-2xl mx-auto px-6 py-8">
+            {/* Mode Toggle */}
+            <div className="mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-slate-900 dark:text-white">Mode</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {mode === "auto" 
+                      ? "Fully automated — discovery to sending" 
+                      : "Step-by-step control"}
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="enrichCredits">Enrich Credits</Label>
-                  <Input
-                    id="enrichCredits"
-                    type="number"
-                    value={maxContacts}
-                    disabled
-                    className="bg-slate-100"
-                  />
-                  <p className="text-xs text-slate-500">Matches max contacts</p>
+                <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                  <button
+                    onClick={() => handleModeChange("auto")}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                      mode === "auto"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                        : "text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    ⚡ Auto
+                  </button>
+                  <button
+                    onClick={() => handleModeChange("manual")}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                      mode === "manual"
+                        ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                        : "text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    Manual
+                  </button>
                 </div>
               </div>
+            </div>
 
-              {/* Auto Mode: Sequence Config */}
-              {mode === "auto" && (
-                <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg space-y-4">
-                  <h4 className="font-medium text-blue-900 dark:text-blue-100">
-                    📧 Email Sequence Settings
-                  </h4>
+            {/* Main Form */}
+            <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div className="p-6 space-y-6">
+                {/* Solution Input */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                    Solution Description
+                  </label>
+                  <textarea
+                    placeholder="Example: We provide a biometric identity platform for securing distributed operations and eliminating fraud in logistics and supply chain..."
+                    value={solution}
+                    onChange={(e) => setSolution(e.target.value)}
+                    className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white/20 focus:border-transparent resize-none min-h-[120px]"
+                  />
+                  <p className="text-xs text-slate-500 mt-2">
+                    Be specific about what problem you solve and who benefits
+                  </p>
+                </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Emails per Contact</Label>
-                      <Select
-                        value={maxSteps.toString()}
-                        onValueChange={(v) => setMaxSteps(parseInt(v))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1 email</SelectItem>
-                          <SelectItem value="2">2 emails</SelectItem>
-                          <SelectItem value="3">3 emails</SelectItem>
-                          <SelectItem value="4">4 emails (with breakup)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Timing Strategy</Label>
-                      <Select
-                        value={timingStrategy}
-                        onValueChange={(v) => setTimingStrategy(v as TimingStrategy)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="human_like">Human-like (2-4 days)</SelectItem>
-                          <SelectItem value="aggressive">Aggressive (1-2 days)</SelectItem>
-                          <SelectItem value="patient">Patient (5-7 days)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Stop on Reply</p>
-                      <p className="text-xs text-slate-500">
-                        Automatically stop sequence when they respond
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={stopOnReply}
-                        onChange={(e) => setStopOnReply(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                {/* Settings Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                      Max Contacts
                     </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={maxContacts}
+                      onChange={handleContactsChange}
+                      className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white/20 focus:border-transparent"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Maximum 50</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                      Credits Used
+                    </label>
+                    <input
+                      type="number"
+                      value={maxContacts}
+                      disabled
+                      className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg opacity-60 cursor-not-allowed"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Matches max contacts</p>
                   </div>
                 </div>
-              )}
 
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
-                  {error}
-                </div>
-              )}
+                {/* Auto Mode Settings */}
+                {mode === "auto" && (
+                  <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                    <h4 className="font-medium text-slate-900 dark:text-white mb-4">
+                      📧 Email Sequence Settings
+                    </h4>
 
-              <div className="flex justify-end pt-4">
-                <Button
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                          Emails per Contact
+                        </label>
+                        <Select
+                          value={maxSteps.toString()}
+                          onValueChange={(v) => setMaxSteps(parseInt(v))}
+                        >
+                          <SelectTrigger className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 email</SelectItem>
+                            <SelectItem value="2">2 emails</SelectItem>
+                            <SelectItem value="3">3 emails</SelectItem>
+                            <SelectItem value="4">4 emails</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                          Timing Strategy
+                        </label>
+                        <Select
+                          value={timingStrategy}
+                          onValueChange={(v) => setTimingStrategy(v as TimingStrategy)}
+                        >
+                          <SelectTrigger className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="human_like">Human-like (2-4 days)</SelectItem>
+                            <SelectItem value="aggressive">Aggressive (1-2 days)</SelectItem>
+                            <SelectItem value="patient">Patient (5-7 days)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                      <div>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">Stop on Reply</p>
+                        <p className="text-xs text-slate-500">Auto stop when they respond</p>
+                      </div>
+                      <button
+                        onClick={() => setStopOnReply(!stopOnReply)}
+                        className={`w-10 h-6 rounded-full transition-all relative ${
+                          stopOnReply ? 'bg-slate-900 dark:bg-white' : 'bg-slate-300 dark:bg-slate-600'
+                        }`}
+                      >
+                        <div 
+                          className={`w-4 h-4 rounded-full absolute top-1 transition-transform ${
+                            stopOnReply 
+                              ? 'translate-x-5 bg-white dark:bg-slate-900' 
+                              : 'translate-x-1 bg-white'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error */}
+                {error && (
+                  <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+                    {error}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+                <button
                   onClick={handleSubmit}
                   disabled={!solution.trim() || isSubmitting || isStarting}
-                  size="lg"
-                  className="px-8"
+                  className="w-full px-4 py-2.5 text-sm font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting || isStarting ? (
-                    <>
-                      <span className="animate-spin mr-2">⏳</span>
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
                       Starting...
-                    </>
+                    </span>
                   ) : mode === "auto" ? (
-                    <>🚀 Start Auto Pipeline</>
+                    "⚡ Start Auto Pipeline"
                   ) : (
-                    <>🔍 Start Discovery</>
+                    "Start Discovery"
                   )}
-                </Button>
+                </button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -412,44 +421,61 @@ export default function DiscoverPage() {
   // Progress Step - Auto Mode
   if (mode === "auto" && orchestrationId) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-6">
-            <Link href="/" className="text-sm text-slate-500 hover:text-slate-700">
-              ← Back to Dashboard
-            </Link>
-          </div>
-
-          <div className="mb-8">
-            <div className="flex items-center gap-3">
-              <Badge className="bg-blue-100 text-blue-800">🚀 Auto Mode</Badge>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Pipeline Running
-              </h1>
+      <div className="h-screen flex flex-col bg-white dark:bg-slate-950">
+        {/* Page Header */}
+        <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-800">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 rounded">⚡ Auto Mode</span>
+                </div>
+                <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Pipeline Running</h1>
+              </div>
+              <Link href="/campaigns">
+                <button className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
+                  Back to Campaigns
+                </button>
+              </Link>
             </div>
-            <p className="text-slate-600 dark:text-slate-400 mt-2">
-              Sit back and relax — everything is happening automatically
-            </p>
           </div>
+        </div>
 
-          {pipelineStatus ? (
-            <PipelineProgress status={pipelineStatus} />
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <span className="text-4xl animate-spin inline-block">⏳</span>
-                <p className="text-slate-500 mt-4">Starting pipeline...</p>
-              </CardContent>
-            </Card>
-          )}
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="max-w-2xl mx-auto">
+            {pipelineStatus ? (
+              <PipelineProgress status={pipelineStatus} />
+            ) : (
+              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-12 text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <svg className="animate-spin h-8 w-8 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <p className="text-slate-500">Starting pipeline...</p>
+              </div>
+            )}
 
-          <div className="mt-6 flex justify-center">
-            {pipelineStatus?.status === "completed" ||
-            pipelineStatus?.status === "failed" ? (
-              <Button onClick={handleStartNew} variant="outline">
-                🔄 Start New Discovery
-              </Button>
-            ) : null}
+            <div className="mt-6 flex justify-center gap-3">
+              {(pipelineStatus?.status === "completed" || pipelineStatus?.status === "failed") ? (
+                <>
+                  {pipelineStatus?.campaign_id && (
+                    <button onClick={handleViewCampaign} className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-colors">
+                      View Campaign
+                    </button>
+                  )}
+                  <button onClick={handleStartNew} className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    Start New
+                  </button>
+                </>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  You can safely leave this page. Check campaigns for progress.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -458,97 +484,121 @@ export default function DiscoverPage() {
 
   // Progress Step - Manual Mode
   if (step === "progress" || step === "complete") {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-6">
-            <Link href="/" className="text-sm text-slate-500 hover:text-slate-700">
-              ← Back to Dashboard
-            </Link>
-          </div>
+    const progress = jobProgress?.progress || 0;
+    const isComplete = step === "complete";
 
-          <div className="mb-8">
-            <div className="flex items-center gap-3">
-              <Badge className="bg-slate-100 text-slate-800">🎛️ Manual Mode</Badge>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                {step === "complete" ? "Discovery Complete" : "Discovery in Progress"}
-              </h1>
+    return (
+      <div className="h-screen flex flex-col bg-white dark:bg-slate-950">
+        {/* Page Header */}
+        <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-800">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 rounded">Manual Mode</span>
+                </div>
+                <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
+                  {isComplete ? "Discovery Complete" : "Discovery in Progress"}
+                </h1>
+              </div>
+              <Link href="/campaigns">
+                <button className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
+                  Back to Campaigns
+                </button>
+              </Link>
             </div>
           </div>
+        </div>
 
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>
-                {step === "complete" ? "🎉 Contacts Found!" : "🔍 Finding Contacts..."}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {discoveryResult?.target_criteria && (
-                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg space-y-3">
-                  <h4 className="text-sm font-medium">AI-Generated Targeting</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {discoveryResult.target_criteria.job_titles.map((title) => (
-                      <Badge key={title} variant="secondary">{title}</Badge>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {discoveryResult.target_criteria.industries.map((industry) => (
-                      <Badge key={industry} variant="outline">{industry}</Badge>
-                    ))}
-                  </div>
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="max-w-2xl mx-auto">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+              {/* Progress Bar */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-slate-900 dark:text-white">Progress</span>
+                  <span className="text-sm text-slate-500">{progress}%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-slate-900 dark:bg-white rounded-full transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+                    {jobProgress?.total_contacts || 0}
+                  </p>
+                  <p className="text-xs text-slate-500">Total</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+                    {jobProgress?.processed_contacts || 0}
+                  </p>
+                  <p className="text-xs text-slate-500">Processed</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+                  <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
+                    {progress}%
+                  </p>
+                  <p className="text-xs text-slate-500">Complete</p>
+                </div>
+              </div>
+
+              {/* Status */}
+              {!isComplete && (
+                <div className="flex items-center justify-center gap-2 text-slate-500">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                  <span className="text-sm capitalize">{jobProgress?.status || "Processing"}...</span>
                 </div>
               )}
 
-              {jobProgress && (
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span>Progress</span>
-                    <span className="font-medium">
-                      {jobProgress.processed_contacts} / {jobProgress.total_contacts} contacts
-                    </span>
-                  </div>
-                  <Progress value={jobProgress.progress} className="h-3" />
-                </div>
-              )}
-
+              {/* Error */}
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                <div className="mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
                   {error}
                 </div>
               )}
+            </div>
 
-              <div className="flex gap-3 pt-4">
-                {step === "complete" ? (
-                  <>
-                    <Button onClick={handleViewCampaign} className="flex-1">
-                      📊 View Campaign & Research Contacts
-                    </Button>
-                    <Button variant="outline" onClick={handleStartNew}>
-                      🔄 New
-                    </Button>
-                  </>
-                ) : (
-                  <Button variant="outline" onClick={handleStartNew} className="w-full">
-                    Cancel
-                  </Button>
-                )}
-              </div>
-
-              {step === "complete" && (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                  <h4 className="font-medium text-amber-800 mb-2">
-                    📋 Next Steps (Manual Mode)
-                  </h4>
-                  <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
-                    <li>View the campaign to see discovered contacts</li>
-                    <li>Click "Research" on contacts you want to target</li>
-                    <li>After research, click "Sequence" to create emails</li>
-                    <li>Emails will be sent automatically at scheduled times</li>
-                  </ol>
-                </div>
+            {/* Actions */}
+            <div className="mt-6 flex justify-center gap-3">
+              {isComplete ? (
+                <>
+                  <button onClick={handleViewCampaign} className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-colors">
+                    View Campaign
+                  </button>
+                  <button onClick={handleStartNew} className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    Start New
+                  </button>
+                </>
+              ) : (
+                <button onClick={handleStartNew} className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  Cancel
+                </button>
               )}
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Next Steps */}
+            {isComplete && (
+              <div className="mt-6 p-4 rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20">
+                <h4 className="font-medium text-amber-800 dark:text-amber-400 mb-2">
+                  Next Steps
+                </h4>
+                <ol className="text-sm text-amber-700 dark:text-amber-300 space-y-1 list-decimal list-inside">
+                  <li>View the campaign to see discovered contacts</li>
+                  <li>Click &quot;Research&quot; on contacts to target</li>
+                  <li>After research, click &quot;Sequence&quot; to create emails</li>
+                  <li>Emails will be sent at scheduled times</li>
+                </ol>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );

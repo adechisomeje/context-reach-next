@@ -35,9 +35,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Authenticated users - show sidebar
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen bg-white dark:bg-slate-950">
         <Sidebar />
-        <main className="ml-64">{children}</main>
+        <main className="ml-60">{children}</main>
       </div>
     );
   }

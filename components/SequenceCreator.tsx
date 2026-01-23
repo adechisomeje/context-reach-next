@@ -9,13 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
   Contact,
@@ -257,141 +250,152 @@ export function SequenceCreator({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <CardHeader>
-          <CardTitle>Create Email Sequence</CardTitle>
-          <CardDescription>
-            Start a multi-step email sequence for {contact.first_name}{" "}
-            {contact.last_name}
-            {contact.company_name && ` at ${contact.company_name}`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <div className="bg-white dark:bg-slate-950 rounded-lg shadow-xl w-full max-w-md mx-4">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Create Sequence</h2>
+              <p className="text-sm text-slate-500">
+                for {contact.first_name} {contact.last_name}
+              </p>
+            </div>
+            <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-5">
           {/* Number of Steps */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Number of Emails</label>
-            <Select
-              value={maxSteps.toString()}
-              onValueChange={(v) => setMaxSteps(parseInt(v))}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Number of Emails
+            </label>
+            <select
+              value={maxSteps}
+              onChange={(e) => setMaxSteps(Number(e.target.value))}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent"
             >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper" className="z-[100]">
-                <SelectItem value="1">1 email (Introduction only)</SelectItem>
-                <SelectItem value="2">2 emails (Intro + Value)</SelectItem>
-                <SelectItem value="3">3 emails (Intro + Value + Question)</SelectItem>
-                <SelectItem value="4">4 emails (Full sequence with breakup)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500">
-              Each email builds on the previous, ending with a polite breakup if needed
-            </p>
+              <option value={1}>1 email</option>
+              <option value={2}>2 emails</option>
+              <option value={3}>3 emails</option>
+              <option value={4}>4 emails</option>
+            </select>
           </div>
 
           {/* Timing Strategy */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Timing Strategy</label>
-            <Select
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Timing Strategy
+            </label>
+            <select
               value={timingStrategy}
-              onValueChange={(v) => setTimingStrategy(v as TimingStrategy)}
+              onChange={(e) => setTimingStrategy(e.target.value as TimingStrategy)}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent"
             >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper" className="z-[100]">
-                {Object.entries(timingDescriptions).map(([key, { label }]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500">
-              {timingDescriptions[timingStrategy].description}
-            </p>
+              <option value="human_like">Human-like</option>
+              <option value="aggressive">Aggressive</option>
+              <option value="patient">Patient</option>
+            </select>
+            <p className="mt-1.5 text-xs text-slate-500">{timingDescriptions[timingStrategy].description}</p>
+          </div>
+
+          {/* Signature */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Email Signature
+            </label>
+            <select
+              value={selectedSignatureId}
+              onChange={(e) => setSelectedSignatureId(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent"
+            >
+              <option value="">No signature</option>
+              {signatures.map((sig) => (
+                <option key={sig.id} value={sig.id}>{sig.name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Stop on Reply */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between py-3 border-t border-b border-slate-100 dark:border-slate-800">
             <div>
-              <p className="text-sm font-medium">Stop on Reply</p>
-              <p className="text-xs text-gray-500">
-                Automatically stop sequence when they respond
-              </p>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Stop on reply</span>
+              <p className="text-xs text-slate-500 mt-0.5">Pause the sequence when contact responds</p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={stopOnReply}
-                onChange={(e) => setStopOnReply(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-
-          {/* Signature Selection */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Signature</label>
-            <Select
-              value={selectedSignatureId}
-              onValueChange={setSelectedSignatureId}
+            <button
+              type="button"
+              onClick={() => setStopOnReply(!stopOnReply)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                stopOnReply ? "bg-slate-900 dark:bg-white" : "bg-slate-200 dark:bg-slate-700"
+              }`}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a signature" />
-              </SelectTrigger>
-              <SelectContent position="popper" className="z-[100]">
-                {signatures.length === 0 ? (
-                  <div className="p-2 text-sm text-gray-500">
-                    No signatures found. Create one in Settings.
-                  </div>
-                ) : (
-                  signatures.map((sig) => (
-                    <SelectItem key={sig.id} value={sig.id}>
-                      {sig.name}
-                      {sig.is_default && " (Default)"}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            {signatures.length === 0 && (
-              <p className="text-xs text-amber-600">
-                ⚠️ No signatures available. <a href="/settings" className="underline">Create one</a> first.
-              </p>
-            )}
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-slate-900 transition-transform ${
+                  stopOnReply ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
           </div>
 
-          {/* Error Display */}
+          {/* Preview Info */}
+          <div className="rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+            <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Preview</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 dark:text-slate-400">Total emails</span>
+                <span className="font-medium text-slate-900 dark:text-white">{maxSteps}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 dark:text-slate-400">Duration</span>
+                <span className="font-medium text-slate-900 dark:text-white">
+                  {timingStrategy === "aggressive" ? `${(maxSteps - 1) * 2} days` :
+                   timingStrategy === "human_like" ? `${(maxSteps - 1) * 3} days` :
+                   `${(maxSteps - 1) * 6} days`}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Error Message */}
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
               {error}
             </div>
           )}
+        </div>
 
-          {/* Actions */}
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={handleCreate}
-              disabled={isCreating || !selectedSignatureId}
-            >
-              {isCreating ? (
-                <>
-                  <span className="animate-spin mr-2">⏳</span>
-                  Creating...
-                </>
-              ) : (
-                <>🚀 Start Sequence</>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={isCreating || !selectedSignatureId}
+            className="px-4 py-2 text-sm font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isCreating ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Creating...
+              </span>
+            ) : (
+              "Create Sequence"
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
