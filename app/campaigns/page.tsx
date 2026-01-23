@@ -90,11 +90,27 @@ export default function CampaignsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Campaigns</CardDescription>
               <CardTitle className="text-3xl">{total}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>⚡ Auto Mode</CardDescription>
+              <CardTitle className="text-3xl text-purple-600">
+                {campaigns.filter((c) => c.mode === "auto").length}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>🎛️ Manual Mode</CardDescription>
+              <CardTitle className="text-3xl text-slate-600">
+                {campaigns.filter((c) => c.mode === "manual").length}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card>
@@ -172,6 +188,17 @@ export default function CampaignsPage() {
                             {campaign.name}
                           </h3>
                           {getStatusBadge(campaign.status)}
+                          {/* Mode Badge - only show if mode is explicitly set */}
+                          {campaign.mode === "auto" && (
+                            <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                              ⚡ Auto
+                            </Badge>
+                          )}
+                          {campaign.mode === "manual" && (
+                            <Badge className="bg-slate-100 text-slate-700 border-slate-200">
+                              🎛️ Manual
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-4">
                           {campaign.solution_description}

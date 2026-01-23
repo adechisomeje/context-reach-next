@@ -19,6 +19,7 @@ interface ContextResearchPanelProps {
   campaignId: string;
   onClose: () => void;
   onEmailScheduled?: () => void;
+  hasSequence?: boolean; // Whether contact already has a sequence running
 }
 
 export function ContextResearchPanel({
@@ -27,6 +28,7 @@ export function ContextResearchPanel({
   campaignId,
   onClose,
   onEmailScheduled,
+  hasSequence = false,
 }: ContextResearchPanelProps) {
   const [copiedHook, setCopiedHook] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
@@ -256,15 +258,21 @@ export function ContextResearchPanel({
         <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-b-xl p-4">
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-500">
-              {/* Intelligence ID: {research.intelligence_id} */}
+              {hasSequence && (
+                <Badge className="bg-amber-100 text-amber-800">
+                  📧 Sequence already running
+                </Badge>
+              )}
             </span>
             <div className="flex gap-3">
               <Button variant="outline" onClick={onClose}>
                 Close
               </Button>
-              <Button onClick={() => setShowComposer(true)}>
-                🚀 Start Sequence
-              </Button>
+              {!hasSequence && (
+                <Button onClick={() => setShowComposer(true)}>
+                  🚀 Start Sequence
+                </Button>
+              )}
             </div>
           </div>
         </div>

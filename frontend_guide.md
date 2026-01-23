@@ -8,6 +8,56 @@ A Next.js frontend for the ContextReach outreach platform with a **pipeline work
 
 ---
 
+## Auto Mode vs Manual Mode
+
+| Mode | What You Do | What Happens Automatically |
+|------|-------------|---------------------------|
+| **Auto Mode** | 1 API call → wait | Discovery → Research → Composition → Scheduling → Sending |
+| **Manual Mode** | Trigger each step | You control when each phase runs |
+
+### Auto Mode
+One click starts the entire pipeline:
+1. Discovers contacts matching your solution
+2. Researches each contact for buying signals  
+3. Creates personalized email sequences
+4. Schedules emails with human-like timing
+5. Sends emails at scheduled times
+
+```typescript
+// Auto Mode API
+POST /api/orchestration/auto-start
+{
+  "solution_description": "...",
+  "max_contacts": 10,
+  "enrich_credits": 10,
+  "sequence_config": {
+    "max_steps": 3,
+    "stop_on_reply": true,
+    "timing_strategy": "human_like"
+  }
+}
+
+// Poll for progress
+GET /api/orchestration/pipeline/{orchestration_id}
+```
+
+### Manual Mode
+Control each step yourself:
+1. **Discovery**: Find and enrich contacts
+2. **Research**: Click "Research" on each contact
+3. **Sequence**: Click "Sequence" to create emails
+4. **Monitor**: View status in campaign details
+
+```typescript
+// Manual Mode APIs
+POST /api/analyze-solution              // Step 1: Discovery
+POST /api/orchestration/manual/research-all/{campaignId}  // Step 2: Research all
+POST /api/orchestration/manual/compose-all/{campaignId}   // Step 3: Compose all
+GET /api/orchestration/manual/job/{jobId}                 // Check job status
+```
+
+---
+
 ## Architecture
 
 ### Backend Services

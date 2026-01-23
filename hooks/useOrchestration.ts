@@ -1,0 +1,269 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { authFetch } from "@/lib/auth";
+import {
+  PipelineStatusResponse,
+  AutoStartRequest,
+  AutoStartResponse,
+  ManualJobResponse,
+  ManualJobStatusResponse,
+  TimingStrategy,
+  SequenceConfig,
+} from "@/lib/types";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+
+// Hook for Auto Mode pipeline status
+export function usePipelineStatus(orchestrationId: string | null) {
+  const [status, setStatus] = useState<PipelineStatusResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!orchestrationId) {
+      setStatus(null);
+      return;
+    }
+
+    let isCancelled = false;
+    let timeoutId: NodeJS.Timeout;
+
+    const poll = async () => {
+      if (isCancelled) return;
+
+      try {
+        setLoading(true);
+        const response = await authFetch(
+          `${API_URL}/api/orchestration/pipeline/${orchestrationId}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch pipeline status");
+        }
+
+        const data: PipelineStatusResponse = await response.json();
+        if (!isCancelled) {
+          setStatus(data);
+          setError(null);
+
+          // Continue polling if not completed or failed
+          if (data.status !== "completed" && data.status !== "failed") {
+            timeoutId = setTimeout(poll, 3000);
+          }
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setError(err instanceof Error ? err.message : "Unknown error");
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    poll();
+
+    return () => {
+      isCancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [orchestrationId]);
+
+  return { status, loading, error };
+}
+
+// Hook for Manual Mode job status
+export function useManualJobStatus(jobId: string | null) {
+  const [status, setStatus] = useState<ManualJobStatusResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!jobId) {
+      setStatus(null);
+      return;
+    }
+
+    let isCancelled = false;
+    let timeoutId: NodeJS.Timeout;
+
+    const poll = async () => {
+      if (isCancelled) return;
+
+      try {
+        setLoading(true);
+        const response = await authFetch(
+          `${API_URL}/api/orchestration/manual/job/${jobId}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch job status");
+        }
+
+        const data: ManualJobStatusResponse = await response.json();
+        if (!isCancelled) {
+          setStatus(data);
+          setError(null);
+
+          // Continue polling if in progress
+          if (data.status === "in_progress" || data.status === "pending") {
+            timeoutId = setTimeout(poll, 2000);
+          }
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setError(err instanceof Error ? err.message : "Unknown error");
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    poll();
+
+    return () => {
+      isCancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [jobId]);
+
+  return { status, loading, error };
+}
+
+// Main orchestration hook with all actions
+export function useOrchestration() {
+  const [isStarting, setIsStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Start Auto Mode pipeline
+  const startAutoMode = useCallback(
+    async (
+      solutionDescription: string,
+      maxContacts: number,
+      sequenceConfig?: Partial<SequenceConfig>
+    ): Promise<AutoStartResponse | null> => {
+      setIsStarting(true);
+      setError(null);
+
+      try {
+        const request: AutoStartRequest = {
+          solution_description: solutionDescription,
+          max_contacts: maxContacts,
+          enrich_credits: maxContacts,
+          sequence_config: {
+            max_steps: sequenceConfig?.max_steps ?? 3,
+            stop_on_reply: sequenceConfig?.stop_on_reply ?? true,
+            timing_strategy: sequenceConfig?.timing_strategy ?? "human_like",
+          },
+        };
+
+        const response = await authFetch(
+          `${API_URL}/api/orchestration/auto-start`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(request),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.detail || "Failed to start auto mode");
+        }
+
+        return await response.json();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        setError(message);
+        return null;
+      } finally {
+        setIsStarting(false);
+      }
+    },
+    []
+  );
+
+  // Manual Mode: Research all contacts in a campaign
+  const researchAll = useCallback(
+    async (campaignId: string): Promise<ManualJobResponse | null> => {
+      setIsStarting(true);
+      setError(null);
+
+      try {
+        const response = await authFetch(
+          `${API_URL}/api/orchestration/manual/research-all/${campaignId}`,
+          { method: "POST" }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.detail || "Failed to start research");
+        }
+
+        return await response.json();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        setError(message);
+        return null;
+      } finally {
+        setIsStarting(false);
+      }
+    },
+    []
+  );
+
+  // Manual Mode: Compose all sequences for a campaign
+  const composeAll = useCallback(
+    async (
+      campaignId: string,
+      sequenceConfig?: Partial<SequenceConfig>
+    ): Promise<ManualJobResponse | null> => {
+      setIsStarting(true);
+      setError(null);
+
+      try {
+        const response = await authFetch(
+          `${API_URL}/api/orchestration/manual/compose-all/${campaignId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sequence_config: {
+                max_steps: sequenceConfig?.max_steps ?? 3,
+                stop_on_reply: sequenceConfig?.stop_on_reply ?? true,
+                timing_strategy: sequenceConfig?.timing_strategy ?? "human_like",
+              },
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.detail || "Failed to start composition");
+        }
+
+        return await response.json();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        setError(message);
+        return null;
+      } finally {
+        setIsStarting(false);
+      }
+    },
+    []
+  );
+
+  return {
+    startAutoMode,
+    researchAll,
+    composeAll,
+    isStarting,
+    error,
+    clearError: () => setError(null),
+  };
+}

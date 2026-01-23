@@ -59,6 +59,9 @@ export default function CampaignDetailPage() {
   // Messages state (for showing scheduled/sent status)
   const [contactMessages, setContactMessages] = useState<Record<string, Message[]>>({});
   
+  // Sequence status state (tracks which contacts have active sequences)
+  const [contactSequences, setContactSequences] = useState<Record<string, { hasSequence: boolean; status?: string }>>({});
+  
   // Email Composer / Sequence state
   const [composingContact, setComposingContact] = useState<Contact | null>(null);
   const [viewingSequenceContact, setViewingSequenceContact] = useState<Contact | null>(null);
@@ -122,6 +125,36 @@ export default function CampaignDetailPage() {
         // Messages fetch is non-critical, just log it
         console.warn("Could not fetch messages:", msgErr);
       }
+
+      // Fetch sequence status for ALL contacts to properly hide/show Sequence button
+      // This helps identify auto-mode sequences
+      const sequenceStatuses: Record<string, { hasSequence: boolean; status?: string }> = {};
+      
+      await Promise.all(
+        contactsData.contacts.map(async (contact) => {
+          try {
+            const seqResponse = await authFetch(
+              `${COMPOSE_API_URL}/api/sequence/${contact.id}?campaign_id=${campaignId}`
+            );
+            if (seqResponse.ok) {
+              const seqData = await seqResponse.json();
+              const isPaused = seqData.sequence_state?.is_paused;
+              // A sequence exists if we get a 200 response (even without messages, the sequence record exists)
+              sequenceStatuses[contact.id] = {
+                hasSequence: true,
+                status: isPaused ? "paused" : "active",
+              };
+            } else if (seqResponse.status === 404) {
+              // No sequence exists
+              sequenceStatuses[contact.id] = { hasSequence: false };
+            }
+          } catch (seqErr) {
+            // Non-critical, assume no sequence
+            sequenceStatuses[contact.id] = { hasSequence: false };
+          }
+        })
+      );
+      setContactSequences(sequenceStatuses);
     } catch (err) {
       console.error("Failed to fetch campaign data:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch campaign data");
@@ -187,13 +220,18 @@ export default function CampaignDetailPage() {
     }
 
     // If contact has research on backend but not locally, fetch it
-    if (contact.has_research && contact.intelligence_id) {
+    if (contact.has_research) {
       try {
         const response = await authFetch(
-          `${CONTEXT_API_URL}/api/intelligence/${contact.intelligence_id}`
+          `${CONTEXT_API_URL}/api/context/${contact.id}`
         );
+        
         if (response.ok) {
-          const intelligenceData = await response.json();
+          const data = await response.json();
+          // The response has { source, context: { ... } } structure
+          // Extract the context object which contains the research data
+          const intelligenceData = data.context || data;
+          
           // Store in local state for future use
           setContactResearch((prev) => ({
             ...prev,
@@ -203,9 +241,11 @@ export default function CampaignDetailPage() {
           setSelectedContact(contact);
         } else {
           console.error("Failed to fetch intelligence:", response.status);
+          setResearchError("Could not load research data. The research may still be processing.");
         }
       } catch (err) {
         console.error("Error fetching intelligence:", err);
+        setResearchError("Error loading research data");
       }
     }
   };
@@ -550,7 +590,7 @@ export default function CampaignDetailPage() {
                       <TableHead>Email</TableHead>
                       <TableHead>Match Score</TableHead>
                       <TableHead>Confidence</TableHead>
-                      {mode === "manual" && <TableHead>Actions</TableHead>}
+                      <TableHead>Status / Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -619,81 +659,86 @@ export default function CampaignDetailPage() {
                         <TableCell>
                           {getConfidenceBadge(contact.email_confidence)}
                         </TableCell>
-                        {mode === "manual" && (
-                          <TableCell>
-                            {hasResearch(contact) ? (
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Badge className="bg-green-100 text-green-800">
-                                  ✓ Researched
-                                </Badge>
-                                {(() => {
-                                  const msgStatus = getContactMessageStatus(contact.id);
-                                  if (msgStatus?.status === "sent") {
-                                    return (
-                                      <Badge 
-                                        className="bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
-                                        onClick={() => setViewingSequenceContact(contact)}
-                                      >
-                                        ✅ Sent ({msgStatus.count})
-                                      </Badge>
-                                    );
-                                  }
-                                  if (msgStatus?.status === "scheduled") {
-                                    return (
-                                      <Badge 
-                                        className="bg-amber-100 text-amber-800 cursor-pointer hover:bg-amber-200"
-                                        onClick={() => setViewingSequenceContact(contact)}
-                                      >
-                                        📧 Scheduled ({msgStatus.count})
-                                      </Badge>
-                                    );
-                                  }
-                                  return null;
-                                })()}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleViewResearch(contact)}
-                                >
-                                  Research
-                                </Button>
-                                {getContactMessageStatus(contact.id) ? (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setViewingSequenceContact(contact)}
-                                  >
-                                    📊 Details
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    variant="default"
-                                    size="sm"
-                                    onClick={() => setComposingContact(contact)}
-                                  >
-                                    🚀 Sequence
-                                  </Button>
-                                )}
-                              </div>
-                            ) : (
+                        <TableCell>
+                          {hasResearch(contact) ? (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge className="bg-green-100 text-green-800">
+                                ✓ Researched
+                              </Badge>
+                              {(() => {
+                                const msgStatus = getContactMessageStatus(contact.id);
+                                const seqStatus = contactSequences[contact.id];
+                                
+                                if (msgStatus?.status === "sent") {
+                                  return (
+                                    <Badge 
+                                      className="bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
+                                      onClick={() => setViewingSequenceContact(contact)}
+                                    >
+                                      ✅ Sent ({msgStatus.count})
+                                    </Badge>
+                                  );
+                                }
+                                if (msgStatus?.status === "scheduled" || seqStatus?.hasSequence) {
+                                  return (
+                                    <Badge 
+                                      className="bg-amber-100 text-amber-800 cursor-pointer hover:bg-amber-200"
+                                      onClick={() => setViewingSequenceContact(contact)}
+                                    >
+                                      📧 Scheduled {msgStatus?.count ? `(${msgStatus.count})` : ""}
+                                    </Badge>
+                                  );
+                                }
+                                return null;
+                              })()}
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                onClick={() => handleResearch(contact)}
-                                disabled={researchingContactId === contact.id}
+                                onClick={() => handleViewResearch(contact)}
                               >
-                                {researchingContactId === contact.id ? (
-                                  <>
-                                    <span className="animate-spin mr-1">⏳</span>
-                                    Researching...
-                                  </>
-                                ) : (
-                                  <>🔍 Research</>
-                                )}
+                                View
                               </Button>
-                            )}
-                          </TableCell>
-                        )}
+                              {/* Show sequence details for any contact with sequence (auto or manual) */}
+                              {(contactSequences[contact.id]?.hasSequence || getContactMessageStatus(contact.id)) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setViewingSequenceContact(contact)}
+                                >
+                                  📊 Details
+                                </Button>
+                              )}
+                              {/* Only show create sequence button if no sequence exists */}
+                              {mode === "manual" && !contactSequences[contact.id]?.hasSequence && !getContactMessageStatus(contact.id) && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => setComposingContact(contact)}
+                                >
+                                  🚀 Sequence
+                                </Button>
+                              )}
+                            </div>
+                          ) : mode === "manual" ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleResearch(contact)}
+                              disabled={researchingContactId === contact.id}
+                            >
+                              {researchingContactId === contact.id ? (
+                                <>
+                                  <span className="animate-spin mr-1">⏳</span>
+                                  Researching...
+                                </>
+                              ) : (
+                                <>🔍 Research</>
+                              )}
+                            </Button>
+                          ) : (
+                            <span className="text-sm text-slate-400">Pending</span>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -734,6 +779,10 @@ export default function CampaignDetailPage() {
           campaignId={campaignId}
           onClose={closeResearchPanel}
           onEmailScheduled={fetchCampaignData}
+          hasSequence={
+            contactSequences[selectedContact.id]?.hasSequence || 
+            !!getContactMessageStatus(selectedContact.id)
+          }
         />
       )}
 

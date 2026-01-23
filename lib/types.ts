@@ -68,6 +68,8 @@ export interface Campaign {
   enriched_contacts: number;
   created_at: string;
   updated_at: string;
+  mode?: "auto" | "manual"; // How the campaign was created
+  orchestration_id?: string | null; // Only set for auto-mode campaigns
 }
 
 export interface CampaignsResponse {
@@ -372,4 +374,71 @@ export interface CampaignAnalytics {
   open_rate: number;
   click_rate: number;
   average_time_to_reply: string | null;
+}
+
+// Orchestration Types (Auto/Manual Mode)
+export type PipelinePhase = "discovery" | "research" | "composition";
+export type PhaseStatus = "pending" | "in_progress" | "completed" | "failed";
+export type PipelineStatus = "waiting_for_discovery" | "researching" | "composing" | "completed" | "failed";
+
+export interface PhaseProgress {
+  status: PhaseStatus;
+  total: number;
+  completed: number;
+  failed: number;
+}
+
+export interface PipelineSummary {
+  contacts_discovered: number;
+  contacts_researched: number;
+  sequences_created: number;
+  total_emails_scheduled: number;
+}
+
+export interface PipelineStatusResponse {
+  orchestration_id: string;
+  campaign_id: string;
+  status: PipelineStatus;
+  phase: PipelinePhase;
+  progress: {
+    discovery: PhaseProgress;
+    research: PhaseProgress;
+    composition: PhaseProgress;
+  };
+  summary: PipelineSummary | null;
+  error: string | null;
+}
+
+export interface AutoStartRequest {
+  solution_description: string;
+  max_contacts: number;
+  enrich_credits: number;
+  sequence_config: {
+    max_steps: number;
+    stop_on_reply: boolean;
+    timing_strategy: TimingStrategy;
+  };
+}
+
+export interface AutoStartResponse {
+  orchestration_id: string;
+  discovery_job_id: string;
+  campaign_id: string;
+  status: string;
+  message: string;
+  mode: "auto";
+}
+
+export interface ManualJobResponse {
+  job_id: string;
+  status: string;
+  contacts_count: number;
+}
+
+export interface ManualJobStatusResponse {
+  job_id: string;
+  status: PhaseStatus;
+  total: number;
+  completed: number;
+  failed: number;
 }
