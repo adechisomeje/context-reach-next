@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,14 @@ import { EmailSignature, CreateSignatureRequest, ClosingStyle } from "@/lib/type
 import { authFetch } from "@/lib/auth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+const OAUTH_API_URL = process.env.NEXT_PUBLIC_OAUTH_API_URL || "http://localhost:8004";
+
+interface GmailStatus {
+  connected: boolean;
+  email?: string;
+  dailySendCount?: number;
+  dailyLimit?: number;
+}
 
 const CLOSING_OPTIONS: { value: ClosingStyle; label: string }[] = [
   { value: "best_regards", label: "Best regards" },
@@ -27,9 +36,17 @@ const CLOSING_OPTIONS: { value: ClosingStyle; label: string }[] = [
 ];
 
 export default function SettingsPage() {
+  const searchParams = useSearchParams();
   const [signatures, setSignatures] = useState<EmailSignature[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Gmail connection state
+  const [gmailStatus, setGmailStatus] = useState<GmailStatus | null>(null);
+  const [gmailLoading, setGmailLoading] = useState(true);
+  const [gmailConnecting, setGmailConnecting] = useState(false);
+  const [gmailDisconnecting, setGmailDisconnecting] = useState(false);
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -71,6 +88,78 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchSignatures();
   }, []);
+
+  // Fetch Gmail connection status
+  const fetchGmailStatus = async () => {
+    setGmailLoading(true);
+    try {
+      const response = await authFetch(`${OAUTH_API_URL}/api/oauth/google/status`);
+      if (response.ok) {
+        const data = await response.json();
+        setGmailStatus(data);
+      } else {
+        setGmailStatus({ connected: false });
+      }
+    } catch (err) {
+      console.error("Failed to fetch Gmail status:", err);
+      setGmailStatus({ connected: false });
+    } finally {
+      setGmailLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGmailStatus();
+    
+    // Check for callback params
+    const connected = searchParams.get("connected");
+    const email = searchParams.get("email");
+    if (connected === "true" && email) {
+      setGmailStatus({ connected: true, email });
+      // Clean up URL
+      window.history.replaceState({}, "", "/settings");
+    }
+  }, [searchParams]);
+
+  // Connect Gmail
+  const connectGmail = async () => {
+    setGmailConnecting(true);
+    try {
+      const response = await authFetch(`${OAUTH_API_URL}/api/oauth/google/auth-url`);
+      if (response.ok) {
+        const data = await response.json();
+        window.location.href = data.auth_url;
+      } else {
+        setError("Failed to get Gmail authorization URL");
+      }
+    } catch (err) {
+      console.error("Failed to connect Gmail:", err);
+      setError("Failed to connect Gmail");
+    } finally {
+      setGmailConnecting(false);
+    }
+  };
+
+  // Disconnect Gmail
+  const disconnectGmail = async () => {
+    setGmailDisconnecting(true);
+    try {
+      const response = await authFetch(`${OAUTH_API_URL}/api/oauth/google/disconnect`, {
+        method: "POST",
+      });
+      if (response.ok) {
+        setGmailStatus({ connected: false });
+        setShowDisconnectModal(false);
+      } else {
+        setError("Failed to disconnect Gmail");
+      }
+    } catch (err) {
+      console.error("Failed to disconnect Gmail:", err);
+      setError("Failed to disconnect Gmail");
+    } finally {
+      setGmailDisconnecting(false);
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -216,6 +305,107 @@ export default function SettingsPage() {
             </Button>
           </div>
         )}
+
+        {/* Gmail Connection Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                <svg className="w-6 h-6" viewBox="0 0 24 24">
+                  <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+                </svg>
+              </div>
+              <div>
+                <CardTitle>Gmail Connection</CardTitle>
+                <CardDescription>
+                  Connect your Gmail account to send personalized outreach emails
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {gmailLoading ? (
+              <div className="flex items-center gap-3 py-4">
+                <svg className="animate-spin h-5 w-5 text-slate-400" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span className="text-sm text-slate-500">Checking connection status...</span>
+              </div>
+            ) : gmailStatus?.connected ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium text-emerald-900 dark:text-emerald-100">Connected</p>
+                      <p className="text-sm text-emerald-700 dark:text-emerald-300">{gmailStatus.email}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowDisconnectModal(true)}
+                    className="text-slate-600 hover:text-red-600 hover:border-red-300"
+                  >
+                    Disconnect
+                  </Button>
+                </div>
+                
+                {/* Daily Sending Stats */}
+                {gmailStatus.dailyLimit !== undefined && (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Daily sending limit</span>
+                      <span className="text-sm font-medium text-slate-900 dark:text-white">
+                        {gmailStatus.dailySendCount || 0} / {gmailStatus.dailyLimit}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-slate-900 dark:bg-white rounded-full transition-all"
+                        style={{ width: `${Math.min(((gmailStatus.dailySendCount || 0) / gmailStatus.dailyLimit) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-white">Not connected</p>
+                  <p className="text-sm text-slate-500">Connect your Gmail to start sending personalized emails</p>
+                </div>
+                <Button
+                  onClick={connectGmail}
+                  disabled={gmailConnecting}
+                  className="gap-2"
+                >
+                  {gmailConnecting ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+                      </svg>
+                      Connect Gmail
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Email Signatures Section */}
         <Card>
@@ -478,6 +668,50 @@ export default function SettingsPage() {
                 disabled={isDeleting}
               >
                 {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gmail Disconnect Confirmation Modal */}
+      {showDisconnectModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                <svg className="w-6 h-6" viewBox="0 0 24 24">
+                  <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Disconnect Gmail
+                </h3>
+                <p className="text-sm text-slate-500">
+                  {gmailStatus?.email}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+              Are you sure you want to disconnect your Gmail account? You will no longer be able to send emails until you reconnect.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowDisconnectModal(false)}
+                disabled={gmailDisconnecting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={disconnectGmail}
+                disabled={gmailDisconnecting}
+              >
+                {gmailDisconnecting ? "Disconnecting..." : "Disconnect"}
               </Button>
             </div>
           </div>

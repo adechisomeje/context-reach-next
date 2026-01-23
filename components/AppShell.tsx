@@ -4,17 +4,18 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { Sidebar } from "@/components/Sidebar";
 
-const AUTH_ROUTES = ["/login", "/signup"];
+// Routes that don't need the sidebar and are accessible without auth
+const PUBLIC_ROUTES = ["/login", "/signup", "/auth/callback"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const pathname = usePathname();
 
-  const isAuthRoute = AUTH_ROUTES.includes(pathname);
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || pathname.startsWith("/auth/");
   const isHomePage = pathname === "/";
 
-  // Show loading state
-  if (isLoading) {
+  // Show loading state (but not for public routes - let them render immediately)
+  if (isLoading && !isPublicRoute) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-slate-500">Loading...</div>
@@ -22,8 +23,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Auth routes (login/signup) - no sidebar
-  if (isAuthRoute) {
+  // Public routes (login/signup/callback) - no sidebar, render immediately
+  if (isPublicRoute) {
     return <>{children}</>;
   }
 
@@ -43,5 +44,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   // Not authenticated and trying to access protected route - will redirect via AuthProvider
-  return null;
+  // Show loading state while redirect happens
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+      <div className="text-slate-500">Redirecting...</div>
+    </div>
+  );
 }

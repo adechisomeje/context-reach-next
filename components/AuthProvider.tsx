@@ -14,7 +14,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const PUBLIC_ROUTES = ["/", "/login", "/signup"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/auth/callback"];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -54,13 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoading) {
-      const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+      const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || pathname === "/auth/callback";
+      const isAuthRoute = pathname === "/login" || pathname === "/signup";
       
       if (!user && !isPublicRoute) {
         // Not logged in and trying to access protected route
         router.push("/login");
-      } else if (user && isPublicRoute) {
-        // Logged in and trying to access login/signup
+      } else if (user && isAuthRoute) {
+        // Logged in and trying to access login/signup - redirect to dashboard
         router.push("/");
       }
     }
