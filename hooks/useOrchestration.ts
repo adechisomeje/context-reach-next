@@ -10,6 +10,7 @@ import {
   ManualJobStatusResponse,
   TimingStrategy,
   SequenceConfig,
+  TargetRegion,
 } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
@@ -144,7 +145,9 @@ export function useOrchestration() {
     async (
       solutionDescription: string,
       maxContacts: number,
-      sequenceConfig?: Partial<SequenceConfig>
+      sequenceConfig?: Partial<SequenceConfig>,
+      targetRegions?: TargetRegion[],
+      targetCountries?: string[]
     ): Promise<AutoStartResponse | null> => {
       setIsStarting(true);
       setError(null);
@@ -154,6 +157,8 @@ export function useOrchestration() {
           solution_description: solutionDescription,
           max_contacts: maxContacts,
           enrich_credits: maxContacts,
+          ...(targetRegions && targetRegions.length > 0 && { target_regions: targetRegions }),
+          ...(targetCountries && targetCountries.length > 0 && { target_countries: targetCountries }),
           sequence_config: {
             max_steps: sequenceConfig?.max_steps ?? 3,
             stop_on_reply: sequenceConfig?.stop_on_reply ?? true,

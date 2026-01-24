@@ -409,10 +409,14 @@ export interface PipelineStatusResponse {
   error: string | null;
 }
 
+export type TargetRegion = "global" | "africa" | "asia" | "europe" | "north_america" | "south_america" | "middle_east" | "oceania";
+
 export interface AutoStartRequest {
   solution_description: string;
   max_contacts: number;
   enrich_credits: number;
+  target_regions?: TargetRegion[];
+  target_countries?: string[];
   sequence_config: {
     max_steps: number;
     stop_on_reply: boolean;
@@ -427,6 +431,15 @@ export interface AutoStartResponse {
   status: string;
   message: string;
   mode: "auto";
+}
+
+export interface RegionInfo {
+  name: string;
+  countries: string[];
+}
+
+export interface RegionsResponse {
+  regions: Record<TargetRegion, RegionInfo>;
 }
 
 export interface ManualJobResponse {

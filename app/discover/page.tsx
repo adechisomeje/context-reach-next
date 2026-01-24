@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DiscoveryResponse, JobStatusResponse, TimingStrategy } from "@/lib/types";
+import { DiscoveryResponse, JobStatusResponse, TimingStrategy, TargetRegion, RegionInfo } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { useOrchestration, usePipelineStatus } from "@/hooks/useOrchestration";
 import { PipelineProgress } from "@/components/PipelineProgress";
@@ -38,6 +38,13 @@ export default function DiscoverPage() {
   const [timingStrategy, setTimingStrategy] = useState<TimingStrategy>("human_like");
   const [stopOnReply, setStopOnReply] = useState(true);
 
+  // Target location state
+  const [availableRegions, setAvailableRegions] = useState<Record<string, RegionInfo>>({});
+  const [selectedRegions, setSelectedRegions] = useState<TargetRegion[]>([]);
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [locationMode, setLocationMode] = useState<"regions" | "countries">("regions");
+  const [regionsLoading, setRegionsLoading] = useState(false);
+
   // Manual mode discovery state
   const [step, setStep] = useState<DiscoveryStep>("form");
   const [discoveryResult, setDiscoveryResult] = useState<DiscoveryResponse | null>(null);
@@ -55,6 +62,25 @@ export default function DiscoverPage() {
     if (savedMode === "auto" || savedMode === "manual") {
       setMode(savedMode);
     }
+  }, []);
+
+  // Fetch available regions
+  useEffect(() => {
+    const fetchRegions = async () => {
+      setRegionsLoading(true);
+      try {
+        const response = await authFetch(`${API_URL}/api/regions`);
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableRegions(data.regions || data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch regions:", err);
+      } finally {
+        setRegionsLoading(false);
+      }
+    };
+    fetchRegions();
   }, []);
 
   // Save mode to localStorage
@@ -133,6 +159,8 @@ export default function DiscoverPage() {
           max_contacts: maxContacts,
           enrich_credits: maxContacts,
           auto_discover: true,
+          ...(locationMode === "regions" && selectedRegions.length > 0 && { target_regions: selectedRegions }),
+          ...(locationMode === "countries" && selectedCountries.length > 0 && { target_countries: selectedCountries }),
         }),
       });
 
@@ -157,11 +185,17 @@ export default function DiscoverPage() {
     if (!solution.trim()) return;
     setError(null);
 
-    const result = await startAutoMode(solution, maxContacts, {
-      max_steps: maxSteps,
-      stop_on_reply: stopOnReply,
-      timing_strategy: timingStrategy,
-    });
+    const result = await startAutoMode(
+      solution, 
+      maxContacts, 
+      {
+        max_steps: maxSteps,
+        stop_on_reply: stopOnReply,
+        timing_strategy: timingStrategy,
+      },
+      locationMode === "regions" ? selectedRegions : undefined,
+      locationMode === "countries" ? selectedCountries : undefined
+    );
 
     if (result) {
       setOrchestrationId(result.orchestration_id);
@@ -197,6 +231,9 @@ export default function DiscoverPage() {
     setJobProgress(null);
     setOrchestrationId(null);
     setError(null);
+    setSelectedRegions([]);
+    setSelectedCountries([]);
+    setLocationMode("regions");
   };
 
   // Form Step
@@ -380,6 +417,147 @@ export default function DiscoverPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Target Location Settings - Available for both modes */}
+                <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                  <h4 className="font-medium text-slate-900 dark:text-white mb-4">
+                    🌍 Target Location
+                  </h4>
+
+                  {/* Location Mode Toggle */}
+                  <div className="flex gap-2 mb-4">
+                    <button
+                        onClick={() => {
+                          setLocationMode("regions");
+                          setSelectedCountries([]);
+                        }}
+                        className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                          locationMode === "regions"
+                            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                            : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                        }`}
+                      >
+                        By Region
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLocationMode("countries");
+                          setSelectedRegions([]);
+                        }}
+                        className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                          locationMode === "countries"
+                            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                            : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                        }`}
+                      >
+                        By Country
+                      </button>
+                    </div>
+
+                    {regionsLoading ? (
+                      <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Loading locations...
+                      </div>
+                    ) : locationMode === "regions" ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-slate-500 mb-2">Select one or more regions to target</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(availableRegions).map(([key, region]) => {
+                            const isSelected = selectedRegions.includes(key as TargetRegion);
+                            return (
+                              <button
+                                key={key}
+                                onClick={() => {
+                                  if (isSelected) {
+                                    setSelectedRegions(selectedRegions.filter(r => r !== key));
+                                  } else {
+                                    setSelectedRegions([...selectedRegions, key as TargetRegion]);
+                                  }
+                                }}
+                                className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                                  isSelected
+                                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-slate-400"
+                                }`}
+                              >
+                                {region.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {selectedRegions.length === 0 && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                            No region selected — will default to Global
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs text-slate-500 mb-2">Select specific countries to target</p>
+                        <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                          {Object.entries(availableRegions).map(([regionKey, region]) => (
+                            <div key={regionKey} className="border-b border-slate-200 dark:border-slate-700 last:border-0">
+                              <div className="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-400">
+                                {region.name}
+                              </div>
+                              <div className="p-2 flex flex-wrap gap-1">
+                                {region.countries.map((country) => {
+                                  const isSelected = selectedCountries.includes(country);
+                                  return (
+                                    <button
+                                      key={country}
+                                      onClick={() => {
+                                        if (isSelected) {
+                                          setSelectedCountries(selectedCountries.filter(c => c !== country));
+                                        } else {
+                                          setSelectedCountries([...selectedCountries, country]);
+                                        }
+                                      }}
+                                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                                        isSelected
+                                          ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                      }`}
+                                    >
+                                      {country}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {selectedCountries.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            <span className="text-xs text-slate-500">Selected:</span>
+                            {selectedCountries.map(country => (
+                              <span
+                                key={country}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-full"
+                              >
+                                {country}
+                                <button
+                                  onClick={() => setSelectedCountries(selectedCountries.filter(c => c !== country))}
+                                  className="hover:opacity-70"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {selectedCountries.length === 0 && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                            No country selected — will default to Global
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                 {/* Error */}
                 {error && (
