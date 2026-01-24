@@ -99,11 +99,7 @@ export function SequenceCreator({
         const sig = signatures.find((s) => s.id === selectedSignatureId);
         if (sig) {
           signature = {
-            first_name: sig.first_name,
-            last_name: sig.last_name,
-            title: sig.title,
-            company: sig.company,
-            closing: sig.closing,
+            html_content: sig.html_content,
           };
         }
       }

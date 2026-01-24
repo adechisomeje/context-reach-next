@@ -13,12 +13,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { EmailSignature, CreateSignatureRequest, ClosingStyle } from "@/lib/types";
+import { EmailSignature, CreateSignatureRequest } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 const OAUTH_API_URL = process.env.NEXT_PUBLIC_OAUTH_API_URL || "http://localhost:8004";
+
+// Default HTML signature template
+const DEFAULT_SIGNATURE_HTML = `<p>Best regards,</p>
+<p><strong>Your Name</strong></p>
+<p>Your Title</p>
+<p>Your Company</p>`;
 
 interface GmailStatus {
   connected: boolean;
@@ -26,14 +32,6 @@ interface GmailStatus {
   dailySendCount?: number;
   dailyLimit?: number;
 }
-
-const CLOSING_OPTIONS: { value: ClosingStyle; label: string }[] = [
-  { value: "best_regards", label: "Best regards" },
-  { value: "thanks", label: "Thanks" },
-  { value: "cheers", label: "Cheers" },
-  { value: "sincerely", label: "Sincerely" },
-  { value: "warm_regards", label: "Warm regards" },
-];
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -55,11 +53,7 @@ export default function SettingsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CreateSignatureRequest>({
     name: "",
-    first_name: "",
-    last_name: "",
-    title: "",
-    company: "",
-    closing: "best_regards",
+    html_content: DEFAULT_SIGNATURE_HTML,
     is_default: false,
   });
 
@@ -290,11 +284,7 @@ export default function SettingsPage() {
   const resetForm = () => {
     setFormData({
       name: "",
-      first_name: "",
-      last_name: "",
-      title: "",
-      company: "",
-      closing: "best_regards",
+      html_content: DEFAULT_SIGNATURE_HTML,
       is_default: false,
     });
     setEditingSignature(null);
@@ -305,11 +295,7 @@ export default function SettingsPage() {
     setEditingSignature(signature);
     setFormData({
       name: signature.name,
-      first_name: signature.first_name,
-      last_name: signature.last_name || "",
-      title: signature.title || "",
-      company: signature.company || "",
-      closing: signature.closing,
+      html_content: signature.html_content || DEFAULT_SIGNATURE_HTML,
       is_default: signature.is_default,
     });
     setShowForm(true);
@@ -317,7 +303,7 @@ export default function SettingsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.first_name.trim()) return;
+    if (!formData.name?.trim() || !formData.html_content?.trim()) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -368,36 +354,35 @@ export default function SettingsPage() {
     if (!deletingSignature) return;
 
     setIsDeleting(true);
+    setError(null);
     try {
-      const response = await authFetch(
+      const token = localStorage.getItem("token");
+      const response = await fetch(
         `${API_URL}/api/settings/signatures/${deletingSignature.id}`,
-        { method: "DELETE" }
+        { 
+          method: "DELETE",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
       );
 
       if (!response.ok) {
-        throw new Error("Failed to delete signature");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to delete signature");
       }
 
       await fetchSignatures();
       setShowDeleteModal(false);
       setDeletingSignature(null);
+      setSuccessMessage("Signature deleted successfully");
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
       console.error("Failed to delete signature:", err);
       setError(err instanceof Error ? err.message : "Failed to delete signature");
     } finally {
       setIsDeleting(false);
     }
-  };
-
-  const getClosingLabel = (closing: ClosingStyle) => {
-    return CLOSING_OPTIONS.find((opt) => opt.value === closing)?.label || closing;
-  };
-
-  const formatSignaturePreview = (sig: EmailSignature) => {
-    const lines = [getClosingLabel(sig.closing) + ",", sig.first_name + (sig.last_name ? ` ${sig.last_name}` : "")];
-    if (sig.title) lines.push(sig.title);
-    if (sig.company) lines.push(sig.company);
-    return lines;
   };
 
   return (
@@ -713,74 +698,42 @@ export default function SettingsPage() {
                   {editingSignature ? "Edit Signature" : "New Signature"}
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Signature Name *</Label>
-                    <Input
-                      id="name"
-                      placeholder="e.g., Work Signature"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="closing">Closing Style</Label>
-                    <select
-                      id="closing"
-                      value={formData.closing}
-                      onChange={(e) => setFormData({ ...formData, closing: e.target.value as ClosingStyle })}
-                      className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 text-sm"
-                    >
-                      {CLOSING_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="name">Signature Name *</Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g., Work Signature"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                   <div className="space-y-2">
-                    <Label htmlFor="first_name">First Name *</Label>
-                    <Input
-                      id="first_name"
-                      placeholder="John"
-                      value={formData.first_name}
-                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                    <Label htmlFor="html_content">HTML Content *</Label>
+                    <textarea
+                      id="html_content"
+                      placeholder="<p>Best regards,</p>&#10;<p><strong>Your Name</strong></p>"
+                      value={formData.html_content || ""}
+                      onChange={(e) => setFormData({ ...formData, html_content: e.target.value })}
+                      className="w-full h-48 px-3 py-2 rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 text-sm font-mono resize-y"
                       required
                     />
+                    <p className="text-xs text-slate-500">
+                      Use HTML tags like &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;br&gt; to format your signature
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="last_name">Last Name</Label>
-                    <Input
-                      id="last_name"
-                      placeholder="Doe"
-                      value={formData.last_name}
-                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {/* Live Preview */}
                   <div className="space-y-2">
-                    <Label htmlFor="title">Job Title</Label>
-                    <Input
-                      id="title"
-                      placeholder="Sales Manager"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company">Company</Label>
-                    <Input
-                      id="company"
-                      placeholder="Acme Corp"
-                      value={formData.company}
-                      onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                    />
+                    <Label>Preview</Label>
+                    <div className="h-48 p-3 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 overflow-auto">
+                      <div 
+                        className="text-sm text-slate-700 dark:text-slate-300"
+                        dangerouslySetInnerHTML={{ __html: formData.html_content || "" }}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -798,26 +751,11 @@ export default function SettingsPage() {
                   </label>
                 </div>
 
-                {/* Preview */}
-                {formData.first_name && (
-                  <div className="mb-4 p-3 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
-                    <span className="text-xs text-slate-500 uppercase tracking-wide">Preview</span>
-                    <div className="mt-2 text-sm text-slate-600 dark:text-slate-400 space-y-0.5">
-                      <p>{getClosingLabel(formData.closing || "best_regards")},</p>
-                      <p className="font-medium text-slate-900 dark:text-white">
-                        {formData.first_name} {formData.last_name}
-                      </p>
-                      {formData.title && <p>{formData.title}</p>}
-                      {formData.company && <p>{formData.company}</p>}
-                    </div>
-                  </div>
-                )}
-
                 <div className="flex justify-end gap-3">
                   <Button type="button" variant="outline" onClick={resetForm}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSubmitting || !formData.name.trim() || !formData.first_name.trim()}>
+                  <Button type="submit" disabled={isSubmitting || !formData.name?.trim() || !formData.html_content?.trim()}>
                     {isSubmitting ? "Saving..." : editingSignature ? "Update Signature" : "Create Signature"}
                   </Button>
                 </div>
@@ -855,13 +793,10 @@ export default function SettingsPage() {
                           <Badge className="bg-green-100 text-green-800">Default</Badge>
                         )}
                       </div>
-                      <div className="text-sm text-slate-600 dark:text-slate-400 space-y-0.5">
-                        {formatSignaturePreview(signature).map((line, i) => (
-                          <p key={i} className={i === 1 ? "font-medium text-slate-800 dark:text-slate-200" : ""}>
-                            {line}
-                          </p>
-                        ))}
-                      </div>
+                      <div 
+                        className="text-sm text-slate-600 dark:text-slate-400 max-h-20 overflow-hidden"
+                        dangerouslySetInnerHTML={{ __html: signature.html_content }}
+                      />
                     </div>
                     <div className="flex items-center gap-2 ml-4">
                       {!signature.is_default && (

@@ -102,11 +102,7 @@ export function EmailComposer({
   const getSignaturePayload = (): SignaturePayload | undefined => {
     if (!signature) return undefined;
     return {
-      first_name: signature.first_name,
-      last_name: signature.last_name,
-      title: signature.title,
-      company: signature.company,
-      closing: signature.closing,
+      html_content: signature.html_content,
     };
   };
 
@@ -304,10 +300,10 @@ export function EmailComposer({
               <CardContent>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">{signature.name}</Badge>
-                  <span className="text-sm text-slate-600 dark:text-slate-400">
-                    {signature.first_name} {signature.last_name}
-                    {signature.title && ` • ${signature.title}`}
-                  </span>
+                  <div 
+                    className="text-sm text-slate-600 dark:text-slate-400 max-h-12 overflow-hidden"
+                    dangerouslySetInnerHTML={{ __html: signature.html_content }}
+                  />
                 </div>
               </CardContent>
             </Card>

@@ -139,17 +139,11 @@ export interface ContextResearchRequest {
 }
 
 // Email Signature Types
-export type ClosingStyle = "best_regards" | "thanks" | "cheers" | "sincerely" | "warm_regards";
-
 export interface EmailSignature {
   id: string;
   user_id: string;
   name: string;
-  first_name: string;
-  last_name: string | null;
-  title: string | null;
-  company: string | null;
-  closing: ClosingStyle;
+  html_content: string;
   is_default: boolean;
   created_at: string;
   updated_at: string;
@@ -157,21 +151,13 @@ export interface EmailSignature {
 
 export interface CreateSignatureRequest {
   name: string;
-  first_name: string;
-  last_name?: string;
-  title?: string;
-  company?: string;
-  closing?: ClosingStyle;
+  html_content: string;
   is_default?: boolean;
 }
 
 export interface UpdateSignatureRequest {
   name?: string;
-  first_name?: string;
-  last_name?: string;
-  title?: string;
-  company?: string;
-  closing?: ClosingStyle;
+  html_content?: string;
   is_default?: boolean;
 }
 
@@ -186,11 +172,7 @@ export interface ComposeOverrides {
 }
 
 export interface SignaturePayload {
-  first_name: string;
-  last_name?: string | null;
-  title?: string | null;
-  company?: string | null;
-  closing: ClosingStyle;
+  html_content: string;
 }
 
 export interface ComposeRequest {
