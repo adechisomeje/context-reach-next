@@ -11,6 +11,7 @@ import {
   TimingStrategy,
   SequenceConfig,
   TargetRegion,
+  SequenceCTA,
 } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
@@ -147,7 +148,8 @@ export function useOrchestration() {
       maxContacts: number,
       sequenceConfig?: Partial<SequenceConfig>,
       targetRegions?: TargetRegion[],
-      targetCountries?: string[]
+      targetCountries?: string[],
+      cta?: SequenceCTA
     ): Promise<AutoStartResponse | null> => {
       setIsStarting(true);
       setError(null);
@@ -163,6 +165,7 @@ export function useOrchestration() {
             max_steps: sequenceConfig?.max_steps ?? 3,
             stop_on_reply: sequenceConfig?.stop_on_reply ?? true,
             timing_strategy: sequenceConfig?.timing_strategy ?? "human_like",
+            ...(cta && { cta }),
           },
         };
 

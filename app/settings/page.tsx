@@ -69,6 +69,12 @@ export default function SettingsPage() {
   const [devModeSaving, setDevModeSaving] = useState(false);
   const [newDevEmail, setNewDevEmail] = useState("");
 
+  // Calendar Link state
+  const [calendarLink, setCalendarLink] = useState<string>("");
+  const [calendarLinkLoading, setCalendarLinkLoading] = useState(true);
+  const [calendarLinkSaving, setCalendarLinkSaving] = useState(false);
+  const [calendarLinkInput, setCalendarLinkInput] = useState<string>("");
+
   const fetchSignatures = async () => {
     setIsLoading(true);
     setError(null);
@@ -276,9 +282,99 @@ export default function SettingsPage() {
     updateDevModeSettings({ dev_mode_recipients: newRecipients });
   };
 
+  // Fetch Calendar Link
+  const fetchCalendarLink = async () => {
+    setCalendarLinkLoading(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/settings/calendar-link`);
+      if (response.ok) {
+        const data = await response.json();
+        setCalendarLink(data.calendar_link || "");
+        setCalendarLinkInput(data.calendar_link || "");
+      }
+    } catch (err) {
+      console.error("Failed to fetch calendar link:", err);
+    } finally {
+      setCalendarLinkLoading(false);
+    }
+  };
+
+  // Update Calendar Link
+  const updateCalendarLink = async () => {
+    if (!calendarLinkInput.trim()) {
+      setError("Please enter a calendar link");
+      return;
+    }
+
+    // Basic URL validation
+    try {
+      new URL(calendarLinkInput.trim());
+    } catch {
+      setError("Please enter a valid URL");
+      return;
+    }
+
+    setCalendarLinkSaving(true);
+    setError(null);
+    try {
+      const response = await authFetch(`${API_URL}/api/settings/calendar-link`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ calendar_link: calendarLinkInput.trim() }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCalendarLink(data.calendar_link || "");
+        setCalendarLinkInput(data.calendar_link || "");
+        setSuccessMessage("Calendar link saved successfully");
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || "Failed to save calendar link");
+      }
+    } catch (err) {
+      console.error("Failed to update calendar link:", err);
+      setError("Failed to save calendar link");
+    } finally {
+      setCalendarLinkSaving(false);
+    }
+  };
+
+  // Delete Calendar Link
+  const deleteCalendarLink = async () => {
+    setCalendarLinkSaving(true);
+    setError(null);
+    try {
+      const response = await authFetch(`${API_URL}/api/settings/calendar-link`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setCalendarLink("");
+        setCalendarLinkInput("");
+        setSuccessMessage("Calendar link removed");
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || "Failed to remove calendar link");
+      }
+    } catch (err) {
+      console.error("Failed to delete calendar link:", err);
+      setError("Failed to remove calendar link");
+    } finally {
+      setCalendarLinkSaving(false);
+    }
+  };
+
   // Fetch Dev Mode settings on mount
   useEffect(() => {
     fetchDevModeSettings();
+  }, []);
+
+  // Fetch Calendar Link on mount
+  useEffect(() => {
+    fetchCalendarLink();
   }, []);
 
   const resetForm = () => {
@@ -663,6 +759,115 @@ export default function SettingsPage() {
                     <strong>How it works:</strong> When dev mode is enabled, any email that would be sent
                     to a contact will instead be sent to all test recipients. The email subject will
                     show the original recipient so you can verify the targeting.
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Calendar Link Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <CardTitle>Calendar Link</CardTitle>
+                <CardDescription>
+                  Set your calendar booking link for meeting CTAs in email sequences
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {calendarLinkLoading ? (
+              <div className="flex items-center gap-3 py-4">
+                <svg className="animate-spin h-5 w-5 text-slate-400" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span className="text-sm text-slate-500">Loading calendar settings...</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Current Calendar Link */}
+                {calendarLink && (
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200">Current Calendar Link</p>
+                      <a 
+                        href={calendarLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline truncate block"
+                      >
+                        {calendarLink}
+                      </a>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={deleteCalendarLink}
+                      disabled={calendarLinkSaving}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </Button>
+                  </div>
+                )}
+
+                {/* Update/Add Calendar Link */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-900 dark:text-white">
+                    {calendarLink ? "Update Calendar Link" : "Add Calendar Link"}
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="url"
+                      placeholder="https://calendly.com/your-link"
+                      value={calendarLinkInput}
+                      onChange={(e) => setCalendarLinkInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), updateCalendarLink())}
+                      disabled={calendarLinkSaving}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={updateCalendarLink}
+                      disabled={calendarLinkSaving || !calendarLinkInput.trim()}
+                      variant={calendarLink ? "outline" : "default"}
+                    >
+                      {calendarLinkSaving ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Saving...
+                        </>
+                      ) : (
+                        calendarLink ? "Update" : "Save"
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Supports Calendly, Cal.com, HubSpot, and other calendar booking services
+                  </p>
+                </div>
+
+                {/* Info */}
+                <div className="text-xs text-slate-500 border-t border-slate-200 dark:border-slate-800 pt-4">
+                  <p>
+                    <strong>How it works:</strong> When you start a contact discovery with a "Book Meeting" or 
+                    "Schedule Demo" call-to-action, this calendar link will be included in your email sequences.
                   </p>
                 </div>
               </div>

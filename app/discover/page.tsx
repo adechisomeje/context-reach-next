@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DiscoveryResponse, JobStatusResponse, TimingStrategy, TargetRegion, RegionInfo } from "@/lib/types";
+import { DiscoveryResponse, JobStatusResponse, TimingStrategy, TargetRegion, RegionInfo, CTAType } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { useOrchestration, usePipelineStatus } from "@/hooks/useOrchestration";
 import { PipelineProgress } from "@/components/PipelineProgress";
@@ -37,6 +37,13 @@ export default function DiscoverPage() {
   const [maxSteps, setMaxSteps] = useState(3);
   const [timingStrategy, setTimingStrategy] = useState<TimingStrategy>("human_like");
   const [stopOnReply, setStopOnReply] = useState(true);
+
+  // CTA state
+  const [ctaType, setCtaType] = useState<CTAType>("reply");
+  const [calendarLink, setCalendarLink] = useState<string>("");
+  const [customLink, setCustomLink] = useState<string>("");
+  const [customText, setCustomText] = useState<string>("");
+  const [calendarLinkLoading, setCalendarLinkLoading] = useState(false);
 
   // Target location state
   const [availableRegions, setAvailableRegions] = useState<Record<string, RegionInfo>>({});
@@ -81,6 +88,27 @@ export default function DiscoverPage() {
       }
     };
     fetchRegions();
+  }, []);
+
+  // Fetch saved calendar link
+  useEffect(() => {
+    const fetchCalendarLink = async () => {
+      setCalendarLinkLoading(true);
+      try {
+        const response = await authFetch(`${API_URL}/api/settings/calendar-link`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.calendar_link) {
+            setCalendarLink(data.calendar_link);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch calendar link:", err);
+      } finally {
+        setCalendarLinkLoading(false);
+      }
+    };
+    fetchCalendarLink();
   }, []);
 
   // Save mode to localStorage
@@ -185,6 +213,35 @@ export default function DiscoverPage() {
     if (!solution.trim()) return;
     setError(null);
 
+    // Build CTA object based on type
+    let cta = undefined;
+    if (ctaType !== "reply") {
+      cta = { type: ctaType } as { type: CTAType; calendar_link?: string; custom_link?: string; custom_text?: string };
+      
+      if (ctaType === "book_meeting" || ctaType === "schedule_demo") {
+        if (!calendarLink) {
+          setError("Please set a calendar link in Settings to use this CTA type");
+          return;
+        }
+        cta.calendar_link = calendarLink;
+      } else if (ctaType === "learn_more" || ctaType === "start_trial") {
+        if (!customLink.trim()) {
+          setError("Please enter a link for this CTA type");
+          return;
+        }
+        cta.custom_link = customLink.trim();
+      } else if (ctaType === "custom") {
+        if (!customText.trim()) {
+          setError("Please enter custom CTA text");
+          return;
+        }
+        cta.custom_text = customText.trim();
+        if (customLink.trim()) {
+          cta.custom_link = customLink.trim();
+        }
+      }
+    }
+
     const result = await startAutoMode(
       solution, 
       maxContacts, 
@@ -194,7 +251,8 @@ export default function DiscoverPage() {
         timing_strategy: timingStrategy,
       },
       locationMode === "regions" ? selectedRegions : undefined,
-      locationMode === "countries" ? selectedCountries : undefined
+      locationMode === "countries" ? selectedCountries : undefined,
+      cta
     );
 
     if (result) {
@@ -414,6 +472,101 @@ export default function DiscoverPage() {
                           }`}
                         />
                       </button>
+                    </div>
+
+                    {/* Call to Action Settings */}
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Call to Action
+                      </label>
+                      <Select
+                        value={ctaType}
+                        onValueChange={(v) => setCtaType(v as CTAType)}
+                      >
+                        <SelectTrigger className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="reply">Ask for Reply (Default)</SelectItem>
+                          <SelectItem value="book_meeting">Book a Meeting</SelectItem>
+                          <SelectItem value="schedule_demo">Schedule a Demo</SelectItem>
+                          <SelectItem value="learn_more">Learn More (Link)</SelectItem>
+                          <SelectItem value="start_trial">Start Free Trial</SelectItem>
+                          <SelectItem value="custom">Custom CTA</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {/* Calendar Link Notice for book_meeting/schedule_demo */}
+                      {(ctaType === "book_meeting" || ctaType === "schedule_demo") && (
+                        <div className="mt-3">
+                          {calendarLinkLoading ? (
+                            <div className="flex items-center gap-2 text-sm text-slate-500">
+                              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
+                              Loading calendar link...
+                            </div>
+                          ) : calendarLink ? (
+                            <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                              <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span className="text-xs text-green-700 dark:text-green-300 truncate flex-1">
+                                {calendarLink}
+                              </span>
+                              <Link href="/settings" className="text-xs text-green-600 dark:text-green-400 hover:underline">
+                                Edit
+                              </Link>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                              <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                              <span className="text-xs text-amber-700 dark:text-amber-300">
+                                No calendar link set.
+                              </span>
+                              <Link href="/settings" className="text-xs text-amber-600 dark:text-amber-400 hover:underline">
+                                Add in Settings
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Custom Link Input for learn_more/start_trial */}
+                      {(ctaType === "learn_more" || ctaType === "start_trial") && (
+                        <div className="mt-3">
+                          <input
+                            type="url"
+                            placeholder="https://your-website.com/link"
+                            value={customLink}
+                            onChange={(e) => setCustomLink(e.target.value)}
+                            className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white"
+                          />
+                        </div>
+                      )}
+
+                      {/* Custom CTA Text and Link */}
+                      {ctaType === "custom" && (
+                        <div className="mt-3 space-y-2">
+                          <input
+                            type="text"
+                            placeholder="Custom call-to-action text..."
+                            value={customText}
+                            onChange={(e) => setCustomText(e.target.value)}
+                            className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white"
+                          />
+                          <input
+                            type="url"
+                            placeholder="https://your-website.com/link (optional)"
+                            value={customLink}
+                            onChange={(e) => setCustomLink(e.target.value)}
+                            className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

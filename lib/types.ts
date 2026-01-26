@@ -393,6 +393,16 @@ export interface PipelineStatusResponse {
 
 export type TargetRegion = "global" | "africa" | "asia" | "europe" | "north_america" | "south_america" | "middle_east" | "oceania";
 
+// CTA Types for email sequences
+export type CTAType = "reply" | "book_meeting" | "schedule_demo" | "learn_more" | "start_trial" | "custom";
+
+export interface SequenceCTA {
+  type: CTAType;
+  calendar_link?: string;
+  custom_link?: string;
+  custom_text?: string;
+}
+
 export interface AutoStartRequest {
   solution_description: string;
   max_contacts: number;
@@ -403,6 +413,7 @@ export interface AutoStartRequest {
     max_steps: number;
     stop_on_reply: boolean;
     timing_strategy: TimingStrategy;
+    cta?: SequenceCTA;
   };
 }
 
