@@ -221,24 +221,24 @@ export function ContextResearchPanel({
                   >
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <span className="text-xs uppercase tracking-wide text-slate-500">
-                        {signal.type.replace("_", " ")}
+                        {(signal.type || "signal").replace(/_/g, " ")}
                       </span>
                       <span
                         className={`px-1.5 py-0.5 rounded text-xs font-medium ${getStrengthStyle(
                           signal.strength
                         )}`}
                       >
-                        {signal.strength}
+                        {signal.strength || "medium"}
                       </span>
                     </div>
                     <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-1">
-                      {signal.title}
+                      {signal.title || "Signal"}
                     </h4>
                     <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">
-                      {signal.summary}
+                      {signal.summary || ""}
                     </p>
                     <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
-                      <span>{signal.source}</span>
+                      <span>{signal.source || "Unknown"}</span>
                       {signal.date && <span>• {signal.date}</span>}
                     </div>
                   </div>

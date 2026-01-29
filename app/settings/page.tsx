@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { EmailSignature, CreateSignatureRequest } from "@/lib/types";
+import { EmailSignature, CreateSignatureRequest, Organization, OrgMember, OrgInvite, OrgRole, OrgContactStats, PendingInvite } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
 
@@ -74,6 +74,24 @@ export default function SettingsPage() {
   const [calendarLinkLoading, setCalendarLinkLoading] = useState(true);
   const [calendarLinkSaving, setCalendarLinkSaving] = useState(false);
   const [calendarLinkInput, setCalendarLinkInput] = useState<string>("");
+
+  // Organization state
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
+  const [orgInvites, setOrgInvites] = useState<OrgInvite[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [orgStats, setOrgStats] = useState<OrgContactStats | null>(null);
+  const [orgLoading, setOrgLoading] = useState(true);
+  const [orgSaving, setOrgSaving] = useState(false);
+  const [showCreateOrgModal, setShowCreateOrgModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showLeaveOrgModal, setShowLeaveOrgModal] = useState(false);
+  const [showRemoveMemberModal, setShowRemoveMemberModal] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<OrgMember | null>(null);
+  const [newOrgName, setNewOrgName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<OrgRole>("member");
+  const [userOrgRole, setUserOrgRole] = useState<OrgRole | null>(null);
 
   const fetchSignatures = async () => {
     setIsLoading(true);
@@ -377,6 +395,324 @@ export default function SettingsPage() {
     fetchCalendarLink();
   }, []);
 
+  // Organization Functions
+  const fetchOrganization = async () => {
+    setOrgLoading(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/organization`);
+      if (response.ok) {
+        const data = await response.json();
+        setOrganization(data);
+        // Find current user's role
+        if (data.members) {
+          const currentMember = data.members.find((m: OrgMember) => m.user_id === user?.id);
+          setUserOrgRole(currentMember?.role || null);
+        }
+        // Fetch members and invites
+        await Promise.all([fetchOrgMembers(), fetchOrgInvites(), fetchOrgStats()]);
+      } else if (response.status === 404) {
+        setOrganization(null);
+        setUserOrgRole(null);
+        // Check for pending invites
+        await fetchPendingInvites();
+      } else {
+        // Non-404 error response
+        setOrganization(null);
+        setUserOrgRole(null);
+      }
+    } catch {
+      // Network error or server unavailable - silently handle
+      setOrganization(null);
+      setUserOrgRole(null);
+    } finally {
+      setOrgLoading(false);
+    }
+  };
+
+  const fetchOrgMembers = async () => {
+    try {
+      const response = await authFetch(`${API_URL}/api/organization/members`);
+      if (response.ok) {
+        const data = await response.json();
+        setOrgMembers(data);
+        // Find current user's role
+        const currentMember = data.find((m: OrgMember) => m.user_id === user?.id);
+        setUserOrgRole(currentMember?.role || null);
+      }
+    } catch (err) {
+      console.error("Failed to fetch org members:", err);
+    }
+  };
+
+  const fetchOrgInvites = async () => {
+    try {
+      const response = await authFetch(`${API_URL}/api/organization/invites`);
+      if (response.ok) {
+        const data = await response.json();
+        setOrgInvites(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch org invites:", err);
+    }
+  };
+
+  const fetchPendingInvites = async () => {
+    try {
+      const response = await authFetch(`${API_URL}/api/invites/pending`);
+      if (response.ok) {
+        const data = await response.json();
+        setPendingInvites(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch pending invites:", err);
+    }
+  };
+
+  const fetchOrgStats = async () => {
+    try {
+      const response = await authFetch(`${API_URL}/api/organization/contacts/stats`);
+      if (response.ok) {
+        const data = await response.json();
+        setOrgStats(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch org stats:", err);
+    }
+  };
+
+  const createOrganization = async () => {
+    if (!newOrgName.trim()) {
+      setError("Please enter an organization name");
+      return;
+    }
+
+    setOrgSaving(true);
+    setError(null);
+    try {
+      const response = await authFetch(`${API_URL}/api/organization`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newOrgName.trim() }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setOrganization(data);
+        setUserOrgRole("super_admin");
+        setShowCreateOrgModal(false);
+        setNewOrgName("");
+        setSuccessMessage("Organization created successfully! You are the super admin.");
+        setTimeout(() => setSuccessMessage(null), 5000);
+        await fetchOrgMembers();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || "Failed to create organization");
+      }
+    } catch (err) {
+      console.error("Failed to create organization:", err);
+      setError("Failed to create organization");
+    } finally {
+      setOrgSaving(false);
+    }
+  };
+
+  const inviteMember = async () => {
+    if (!inviteEmail.trim()) {
+      setError("Please enter an email address");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inviteEmail.trim())) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    setOrgSaving(true);
+    setError(null);
+    try {
+      const response = await authFetch(`${API_URL}/api/organization/invites`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: inviteEmail.trim().toLowerCase(), role: inviteRole }),
+      });
+
+      if (response.ok) {
+        setShowInviteModal(false);
+        setInviteEmail("");
+        setInviteRole("member");
+        setSuccessMessage("Invitation sent successfully!");
+        setTimeout(() => setSuccessMessage(null), 5000);
+        await fetchOrgInvites();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || "Failed to send invitation");
+      }
+    } catch (err) {
+      console.error("Failed to invite member:", err);
+      setError("Failed to send invitation");
+    } finally {
+      setOrgSaving(false);
+    }
+  };
+
+  const revokeInvite = async (inviteId: string) => {
+    setOrgSaving(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/organization/invites/${inviteId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setSuccessMessage("Invitation revoked");
+        setTimeout(() => setSuccessMessage(null), 5000);
+        await fetchOrgInvites();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || "Failed to revoke invitation");
+      }
+    } catch (err) {
+      console.error("Failed to revoke invite:", err);
+      setError("Failed to revoke invitation");
+    } finally {
+      setOrgSaving(false);
+    }
+  };
+
+  const acceptInvite = async (token: string) => {
+    setOrgSaving(true);
+    setError(null);
+    try {
+      const response = await authFetch(`${API_URL}/api/invites/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+
+      if (response.ok) {
+        setSuccessMessage("You have joined the organization!");
+        setTimeout(() => setSuccessMessage(null), 5000);
+        await fetchOrganization();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || "Failed to accept invitation");
+      }
+    } catch (err) {
+      console.error("Failed to accept invite:", err);
+      setError("Failed to accept invitation");
+    } finally {
+      setOrgSaving(false);
+    }
+  };
+
+  const updateMemberRole = async (memberId: string, newRole: OrgRole) => {
+    setOrgSaving(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/organization/members/${memberId}/role`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      if (response.ok) {
+        setSuccessMessage("Member role updated");
+        setTimeout(() => setSuccessMessage(null), 5000);
+        await fetchOrgMembers();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || "Failed to update member role");
+      }
+    } catch (err) {
+      console.error("Failed to update role:", err);
+      setError("Failed to update member role");
+    } finally {
+      setOrgSaving(false);
+    }
+  };
+
+  const removeMember = async () => {
+    if (!memberToRemove) return;
+
+    setOrgSaving(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/organization/members/${memberToRemove.user_id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setShowRemoveMemberModal(false);
+        setMemberToRemove(null);
+        setSuccessMessage("Member removed from organization");
+        setTimeout(() => setSuccessMessage(null), 5000);
+        await fetchOrgMembers();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || "Failed to remove member");
+      }
+    } catch (err) {
+      console.error("Failed to remove member:", err);
+      setError("Failed to remove member");
+    } finally {
+      setOrgSaving(false);
+    }
+  };
+
+  const leaveOrganization = async () => {
+    setOrgSaving(true);
+    try {
+      const response = await authFetch(`${API_URL}/api/organization`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setShowLeaveOrgModal(false);
+        setOrganization(null);
+        setOrgMembers([]);
+        setOrgInvites([]);
+        setUserOrgRole(null);
+        setSuccessMessage("You have left the organization");
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || "Failed to leave organization");
+      }
+    } catch (err) {
+      console.error("Failed to leave organization:", err);
+      setError("Failed to leave organization");
+    } finally {
+      setOrgSaving(false);
+    }
+  };
+
+  // Fetch Organization on mount
+  useEffect(() => {
+    if (user?.id) {
+      fetchOrganization();
+    }
+  }, [user?.id]);
+
+  const getRoleBadgeColor = (role: OrgRole) => {
+    switch (role) {
+      case "super_admin":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
+      case "admin":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+      default:
+        return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300";
+    }
+  };
+
+  const getRoleLabel = (role: OrgRole) => {
+    switch (role) {
+      case "super_admin":
+        return "Super Admin";
+      case "admin":
+        return "Admin";
+      default:
+        return "Member";
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -527,6 +863,254 @@ export default function SettingsPage() {
             </Button>
           </div>
         )}
+
+        {/* Organization Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <CardTitle>Organization</CardTitle>
+                    {organization && userOrgRole && (
+                      <Badge className={getRoleBadgeColor(userOrgRole)}>
+                        {getRoleLabel(userOrgRole)}
+                      </Badge>
+                    )}
+                  </div>
+                  <CardDescription>
+                    {organization 
+                      ? `Manage your team at ${organization.name}`
+                      : "Create or join an organization to collaborate with your team"
+                    }
+                  </CardDescription>
+                </div>
+              </div>
+              {organization && (userOrgRole === "super_admin" || userOrgRole === "admin") && (
+                <Button onClick={() => setShowInviteModal(true)} size="sm">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  Invite Member
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {orgLoading ? (
+              <div className="flex items-center gap-3 py-4">
+                <svg className="animate-spin h-5 w-5 text-slate-400" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span className="text-sm text-slate-500">Loading organization...</span>
+              </div>
+            ) : organization ? (
+              <div className="space-y-6">
+                {/* Organization Stats */}
+                {orgStats && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{orgMembers.length}</p>
+                      <p className="text-xs text-slate-500">Team Members</p>
+                    </div>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{orgStats.organization_total}</p>
+                      <p className="text-xs text-slate-500">Total Contacts</p>
+                    </div>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{orgStats.my_contacts}</p>
+                      <p className="text-xs text-slate-500">My Contacts</p>
+                    </div>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{orgStats.unique_members_contributing}</p>
+                      <p className="text-xs text-slate-500">Contributors</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Team Members */}
+                <div>
+                  <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-3">Team Members</h4>
+                  <div className="space-y-2">
+                    {orgMembers.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                              {member.first_name?.[0]}{member.last_name?.[0]}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">
+                              {member.first_name} {member.last_name}
+                              {member.user_id === user?.id && <span className="text-slate-500 ml-1">(you)</span>}
+                            </p>
+                            <p className="text-xs text-slate-500">{member.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getRoleBadgeColor(member.role)}>
+                            {getRoleLabel(member.role)}
+                          </Badge>
+                          {userOrgRole === "super_admin" && member.user_id !== user?.id && (
+                            <div className="flex items-center gap-1">
+                              <select
+                                value={member.role}
+                                onChange={(e) => updateMemberRole(member.user_id, e.target.value as OrgRole)}
+                                disabled={orgSaving}
+                                className="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                              >
+                                <option value="member">Member</option>
+                                <option value="admin">Admin</option>
+                                <option value="super_admin">Super Admin</option>
+                              </select>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setMemberToRemove(member);
+                                  setShowRemoveMemberModal(true);
+                                }}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </Button>
+                            </div>
+                          )}
+                          {userOrgRole === "admin" && member.role === "member" && member.user_id !== user?.id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setMemberToRemove(member);
+                                setShowRemoveMemberModal(true);
+                              }}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pending Invites */}
+                {orgInvites.length > 0 && (userOrgRole === "super_admin" || userOrgRole === "admin") && (
+                  <div>
+                    <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-3">Pending Invitations</h4>
+                    <div className="space-y-2">
+                      {orgInvites.map((invite) => (
+                        <div key={invite.id} className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                          <div className="flex items-center gap-3">
+                            <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <div>
+                              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">{invite.email}</p>
+                              <p className="text-xs text-amber-600 dark:text-amber-400">
+                                Invited as {getRoleLabel(invite.role)} • Expires {new Date(invite.expires_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => revokeInvite(invite.id)}
+                            disabled={orgSaving}
+                            className="text-amber-700 hover:text-amber-800 hover:bg-amber-100"
+                          >
+                            Revoke
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Leave Organization */}
+                {userOrgRole !== "super_admin" && (
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowLeaveOrgModal(true)}
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                    >
+                      Leave Organization
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Pending Invites for user */}
+                {pendingInvites.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-slate-900 dark:text-white">Pending Invitations</h4>
+                    {pendingInvites.map((invite) => (
+                      <div key={invite.id} className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-800 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-indigo-900 dark:text-indigo-200">
+                              Join {invite.organization_name}
+                            </p>
+                            <p className="text-xs text-indigo-600 dark:text-indigo-400">
+                              You&apos;ve been invited as {getRoleLabel(invite.role)} by {invite.invited_by.name}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => acceptInvite(invite.token)}
+                          disabled={orgSaving}
+                          size="sm"
+                        >
+                          Accept Invite
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Create Organization */}
+                <div className="text-center py-6">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
+                    No Organization Yet
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-4 max-w-sm mx-auto">
+                    Create an organization to collaborate with your team. Share contact deduplication and manage outreach together.
+                  </p>
+                  <Button onClick={() => setShowCreateOrgModal(true)}>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create Organization
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Gmail Connection Section */}
         <Card className="mb-6">
@@ -1130,6 +1714,232 @@ export default function SettingsPage() {
                 disabled={gmailDisconnecting}
               >
                 {gmailDisconnecting ? "Disconnecting..." : "Disconnect"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Organization Modal */}
+      {showCreateOrgModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center">
+                <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Create Organization
+                </h3>
+                <p className="text-sm text-slate-500">
+                  You will become the super admin
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <Label htmlFor="org-name">Organization Name</Label>
+                <Input
+                  id="org-name"
+                  placeholder="e.g., Acme Inc"
+                  value={newOrgName}
+                  onChange={(e) => setNewOrgName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && createOrganization()}
+                />
+              </div>
+              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">As super admin, you can:</h4>
+                <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                  <li>• Invite and remove team members</li>
+                  <li>• Assign roles (admin, member)</li>
+                  <li>• Share contact deduplication across the team</li>
+                  <li>• Transfer ownership to another member</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCreateOrgModal(false);
+                  setNewOrgName("");
+                }}
+                disabled={orgSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={createOrganization}
+                disabled={orgSaving || !newOrgName.trim()}
+              >
+                {orgSaving ? "Creating..." : "Create Organization"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Member Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center">
+                <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Invite Team Member
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Send an invitation to join {organization?.name}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <Label htmlFor="invite-email">Email Address</Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  placeholder="colleague@company.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="invite-role">Role</Label>
+                <select
+                  id="invite-role"
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as OrgRole)}
+                  className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 text-sm"
+                >
+                  <option value="member">Member - Standard access</option>
+                  <option value="admin">Admin - Can invite & remove members</option>
+                  {userOrgRole === "super_admin" && (
+                    <option value="super_admin">Super Admin - Full control</option>
+                  )}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setInviteEmail("");
+                  setInviteRole("member");
+                }}
+                disabled={orgSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={inviteMember}
+                disabled={orgSaving || !inviteEmail.trim()}
+              >
+                {orgSaving ? "Sending..." : "Send Invitation"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leave Organization Modal */}
+      {showLeaveOrgModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Leave Organization
+                </h3>
+                <p className="text-sm text-slate-500">
+                  {organization?.name}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+              Are you sure you want to leave this organization? You will lose access to shared team features and contact deduplication.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowLeaveOrgModal(false)}
+                disabled={orgSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={leaveOrganization}
+                disabled={orgSaving}
+              >
+                {orgSaving ? "Leaving..." : "Leave Organization"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Member Modal */}
+      {showRemoveMemberModal && memberToRemove && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Remove Member
+                </h3>
+                <p className="text-sm text-slate-500">
+                  {memberToRemove.first_name} {memberToRemove.last_name}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+              Are you sure you want to remove <strong>{memberToRemove.first_name} {memberToRemove.last_name}</strong> from the organization? They will lose access to all team features.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRemoveMemberModal(false);
+                  setMemberToRemove(null);
+                }}
+                disabled={orgSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={removeMember}
+                disabled={orgSaving}
+              >
+                {orgSaving ? "Removing..." : "Remove Member"}
               </Button>
             </div>
           </div>

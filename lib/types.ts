@@ -448,3 +448,71 @@ export interface ManualJobStatusResponse {
   completed: number;
   failed: number;
 }
+
+// Organization Types
+export type OrgRole = "super_admin" | "admin" | "member";
+
+export interface Organization {
+  id: string;
+  name: string;
+  domain: string | null;
+  settings?: Record<string, unknown>;
+  created_at: string;
+  member_count?: number;
+  your_role?: OrgRole;
+}
+
+export interface OrgMember {
+  id: string;
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  avatar_url?: string | null;
+  role: OrgRole;
+  joined_at: string;
+}
+
+export interface OrgInvite {
+  id: string;
+  email: string;
+  role: OrgRole;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface PendingInvite {
+  id: string;
+  organization_name: string;
+  organization_domain: string;
+  role: OrgRole;
+  invited_by: {
+    email: string;
+    name: string;
+  };
+  expires_at: string;
+  token: string;
+}
+
+export interface OrgContactStats {
+  organization_total: number;
+  unique_members_contributing: number;
+  first_contact_date: string | null;
+  last_contact_date: string | null;
+  my_contacts: number;
+}
+
+export interface OrgSuggestion {
+  has_organization: boolean;
+  organization?: {
+    id: string;
+    name: string;
+  };
+  suggestion?: {
+    organization_id: string;
+    organization_name: string;
+    domain: string;
+    member_count: number;
+    message: string;
+  } | null;
+}
