@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Campaign, CampaignsResponse } from "@/lib/types";
+import { authFetch } from "@/lib/auth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 
@@ -40,7 +41,7 @@ export default function DashboardPage() {
     setError(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/campaigns`);
+      const response = await authFetch(`${API_URL}/api/campaigns`);
       if (!response.ok) {
         throw new Error(`Failed to fetch campaigns: ${response.status}`);
       }
