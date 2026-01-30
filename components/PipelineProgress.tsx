@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PipelineStatusResponse, PipelinePhase, PhaseStatus } from "@/lib/types";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import gsap from "gsap";
 import Lottie from "lottie-react";
 
 // Lottie animation data for each phase (inline JSON for reliability)
@@ -513,104 +512,22 @@ const statusIcons: Record<PhaseStatus, React.ReactNode> = {
   ),
 };
 
-function AnimatedCounter({ value, duration = 1 }: { value: number; duration?: number }) {
-  const [displayValue, setDisplayValue] = useState(0);
-  const counterRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    const obj = { value: displayValue };
-    gsap.to(obj, {
-      value,
-      duration,
-      ease: "power2.out",
-      onUpdate: () => setDisplayValue(Math.round(obj.value)),
-    });
-  }, [value, duration]);
-
-  return <span ref={counterRef}>{displayValue}</span>;
-}
-
-function ParticleBackground({ isActive }: { isActive: boolean }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isActive || !containerRef.current) return;
-
-    const particles: HTMLDivElement[] = [];
-    const container = containerRef.current;
-
-    const createParticle = () => {
-      const particle = document.createElement("div");
-      particle.className = "absolute w-1 h-1 rounded-full bg-white/30";
-      particle.style.left = `${Math.random() * 100}%`;
-      particle.style.top = `${Math.random() * 100}%`;
-      container.appendChild(particle);
-      particles.push(particle);
-
-      gsap.to(particle, {
-        y: -30 + Math.random() * -20,
-        x: (Math.random() - 0.5) * 30,
-        opacity: 0,
-        duration: 1 + Math.random() * 1,
-        ease: "power1.out",
-        onComplete: () => {
-          particle.remove();
-          particles.splice(particles.indexOf(particle), 1);
-        },
-      });
-    };
-
-    const interval = setInterval(createParticle, 200);
-
-    return () => {
-      clearInterval(interval);
-      particles.forEach((p) => p.remove());
-    };
-  }, [isActive]);
-
-  return <div ref={containerRef} className="absolute inset-0 overflow-hidden pointer-events-none" />;
-}
-
-// Circular processing connector between phases
+// Simple connector between phases (CSS-based, no GSAP)
 function ProcessingConnector({ 
   isActive, 
   isCompleted,
   fromGradient,
-  toGradient 
 }: { 
   isActive: boolean; 
   isCompleted: boolean;
   fromGradient: string;
-  toGradient: string;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const orbitRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isActive || !orbitRef.current) return;
-
-    // Continuous rotation animation
-    const rotation = gsap.to(orbitRef.current, {
-      rotation: 360,
-      duration: 2,
-      repeat: -1,
-      ease: "none",
-    });
-
-    return () => {
-      rotation.kill();
-    };
-  }, [isActive]);
-
   if (isCompleted) {
     // Completed state - show flowing line with checkmark
     return (
       <div className="flex items-center justify-center px-1 pt-8">
         <div className="relative flex items-center">
-          {/* Flowing completed line */}
           <div className="w-6 h-1 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 shadow-sm shadow-green-500/50" />
-          
-          {/* Success dot */}
           <div className="relative w-6 h-6 mx-1">
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg shadow-green-500/40" />
             <div className="absolute inset-0 flex items-center justify-center">
@@ -619,7 +536,6 @@ function ProcessingConnector({
               </svg>
             </div>
           </div>
-          
           <div className="w-6 h-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 shadow-sm shadow-emerald-500/50" />
         </div>
       </div>
@@ -627,22 +543,15 @@ function ProcessingConnector({
   }
 
   if (isActive) {
-    // Active processing state - circular cooking animation
+    // Active processing state - CSS-only circular animation
     return (
-      <div ref={containerRef} className="flex items-center justify-center px-1 pt-8">
+      <div className="flex items-center justify-center px-1 pt-8">
         <div className="relative w-12 h-12">
-          {/* Outer glow */}
           <div className={`absolute inset-0 rounded-full bg-gradient-to-r ${fromGradient} opacity-20 blur-md animate-pulse`} />
-          
-          {/* Background track */}
           <div className="absolute inset-1 rounded-full border-2 border-slate-200 dark:border-slate-700" />
           
-          {/* Spinning gradient ring */}
-          <div 
-            ref={orbitRef}
-            className="absolute inset-0"
-            style={{ transformOrigin: "center center" }}
-          >
+          {/* CSS spinning ring */}
+          <div className="absolute inset-0 animate-spin" style={{ animationDuration: "2s" }}>
             <svg className="w-full h-full" viewBox="0 0 48 48">
               <defs>
                 <linearGradient id="processingGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -664,7 +573,7 @@ function ProcessingConnector({
             </svg>
           </div>
           
-          {/* Center cooking icon */}
+          {/* Center icon */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className={`w-6 h-6 rounded-full bg-gradient-to-r ${fromGradient} flex items-center justify-center shadow-lg`}>
               <svg className="w-3.5 h-3.5 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -673,7 +582,7 @@ function ProcessingConnector({
             </div>
           </div>
           
-          {/* Orbiting dots */}
+          {/* Orbiting dots - CSS only */}
           <div className="absolute inset-0 animate-spin" style={{ animationDuration: "3s" }}>
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-violet-500 shadow-lg shadow-violet-500/50" />
           </div>
@@ -688,24 +597,13 @@ function ProcessingConnector({
     );
   }
 
-  // Pending state - subtle waiting indicator
+  // Pending state
   return (
     <div className="flex items-center justify-center px-1 pt-8">
       <div className="relative w-10 h-10">
-        {/* Dashed circle waiting */}
         <svg className="w-full h-full text-slate-300 dark:text-slate-600" viewBox="0 0 40 40">
-          <circle
-            cx="20"
-            cy="20"
-            r="16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeDasharray="4 4"
-          />
+          <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
         </svg>
-        
-        {/* Center dot */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600" />
         </div>
@@ -716,101 +614,7 @@ function ProcessingConnector({
 
 export function PipelineProgress({ status }: PipelineProgressProps) {
   const phases: PipelinePhase[] = ["discovery", "research", "composition"];
-  const containerRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const phasesRef = useRef<HTMLDivElement>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
-  const progressRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-  // Initial mount animation
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      // Animate header
-      gsap.from(headerRef.current, {
-        y: -20,
-        opacity: 0,
-        duration: 0.6,
-        ease: "power3.out",
-      });
-
-      // Animate phases with stagger
-      gsap.from(".phase-card", {
-        y: 30,
-        opacity: 0,
-        duration: 0.5,
-        stagger: 0.15,
-        ease: "power3.out",
-        delay: 0.2,
-      });
-
-      // Animate connecting lines
-      gsap.from(".connecting-line", {
-        scaleX: 0,
-        duration: 0.4,
-        stagger: 0.15,
-        ease: "power2.inOut",
-        delay: 0.4,
-      });
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, []);
-
-  // Animate progress bars when values change
-  useEffect(() => {
-    progressRefs.current.forEach((ref, index) => {
-      if (ref) {
-        const phase = phases[index];
-        const phaseProgress = status.progress[phase];
-        const percent = phaseProgress.total > 0
-          ? (phaseProgress.completed / phaseProgress.total) * 100
-          : 0;
-
-        gsap.to(ref, {
-          width: `${percent}%`,
-          duration: 0.8,
-          ease: "power2.out",
-        });
-      }
-    });
-  }, [status.progress]);
-
-  // Animate summary appearance
-  useEffect(() => {
-    if (status.summary && summaryRef.current) {
-      gsap.from(summaryRef.current, {
-        scale: 0.9,
-        opacity: 0,
-        duration: 0.6,
-        ease: "back.out(1.7)",
-      });
-
-      // Animate confetti-like particles
-      const colors = ["#10b981", "#34d399", "#6ee7b7", "#a7f3d0"];
-      for (let i = 0; i < 20; i++) {
-        const particle = document.createElement("div");
-        particle.style.position = "absolute";
-        particle.style.width = "8px";
-        particle.style.height = "8px";
-        particle.style.borderRadius = "50%";
-        particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-        particle.style.left = "50%";
-        particle.style.top = "50%";
-        particle.style.pointerEvents = "none";
-        summaryRef.current.appendChild(particle);
-
-        gsap.to(particle, {
-          x: (Math.random() - 0.5) * 300,
-          y: (Math.random() - 0.5) * 200,
-          opacity: 0,
-          scale: 0,
-          duration: 1 + Math.random() * 0.5,
-          ease: "power2.out",
-          onComplete: () => particle.remove(),
-        });
-      }
-    }
-  }, [status.summary]);
 
   const getHeaderContent = () => {
     if (status.status === "completed") {
@@ -870,12 +674,12 @@ export function PipelineProgress({ status }: PipelineProgressProps) {
   };
 
   return (
-    <div ref={containerRef} className="relative">
+    <div className="relative">
       <Card className="overflow-hidden border-0 shadow-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800">
         {/* Animated background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-emerald-500/5 pointer-events-none" />
         
-        <CardHeader ref={headerRef} className="relative border-b border-slate-100 dark:border-slate-800 pb-6">
+        <CardHeader className="relative border-b border-slate-100 dark:border-slate-800 pb-6">
           <CardTitle className="flex items-center justify-between">
             {getHeaderContent()}
             
@@ -889,7 +693,7 @@ export function PipelineProgress({ status }: PipelineProgressProps) {
           </CardTitle>
         </CardHeader>
 
-        <CardContent ref={phasesRef} className="relative pt-8 pb-6 space-y-6">
+        <CardContent className="relative pt-8 pb-6 space-y-6">
           {/* Phase Progress Cards */}
           <div className="flex items-start justify-between gap-4">
             {phases.map((phase, index) => {
@@ -912,7 +716,6 @@ export function PipelineProgress({ status }: PipelineProgressProps) {
                           ? "border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/20"
                           : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                   }`}>
-                    <ParticleBackground isActive={isActive} />
                     
                     {/* Status icon */}
                     <div className="flex items-center justify-between mb-3">
@@ -951,29 +754,28 @@ export function PipelineProgress({ status }: PipelineProgressProps) {
                       <div className="flex justify-between text-xs">
                         <span className={isActive ? "text-white/80" : "text-slate-500"}>Progress</span>
                         <span className={`font-bold ${isActive ? "text-white" : "text-slate-700 dark:text-slate-300"}`}>
-                          <AnimatedCounter value={phaseProgress.completed} /> / {phaseProgress.total}
+                          {phaseProgress.completed} / {phaseProgress.total}
                         </span>
                       </div>
                       
                       {/* Progress bar */}
                       <div className="h-2 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
                         <div
-                          ref={(el) => { progressRefs.current[index] = el; }}
-                          className={`h-full rounded-full transition-colors ${
+                          className={`h-full rounded-full transition-all duration-500 ${
                             phaseProgress.status === "completed"
                               ? "bg-gradient-to-r from-green-400 to-emerald-500"
                               : phaseProgress.status === "failed"
                                 ? "bg-gradient-to-r from-red-400 to-rose-500"
                                 : `bg-gradient-to-r ${config.gradient}`
                           }`}
-                          style={{ width: "0%" }}
+                          style={{ width: `${percent}%` }}
                         />
                       </div>
 
                       {/* Percentage */}
                       <div className="text-right">
                         <span className={`text-lg font-bold ${isActive ? "text-white" : "text-slate-700 dark:text-slate-300"}`}>
-                          <AnimatedCounter value={percent} />%
+                          {percent}%
                         </span>
                       </div>
 
@@ -995,7 +797,6 @@ export function PipelineProgress({ status }: PipelineProgressProps) {
                       isActive={phaseProgress.status === "completed" && status.progress[phases[index + 1]].status === "in_progress"}
                       isCompleted={status.progress[phases[index + 1]].status === "completed" || status.progress[phases[index + 1]].status === "in_progress"}
                       fromGradient={config.gradient}
-                      toGradient={phaseConfig[phases[index + 1]].gradient}
                     />
                   )}
                 </div>
@@ -1161,7 +962,7 @@ export function PipelineProgress({ status }: PipelineProgressProps) {
                     >
                       <div className="text-2xl mb-1">{stat.icon}</div>
                       <div className="text-2xl font-bold text-slate-800 dark:text-white">
-                        <AnimatedCounter value={stat.value} duration={1.5} />
+                        {stat.value}
                       </div>
                       <div className="text-xs text-slate-500 dark:text-slate-400">{stat.label}</div>
                     </div>
