@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DiscoveryResponse, JobStatusResponse, TimingStrategy, TargetRegion, RegionInfo, CTAType } from "@/lib/types";
+import { DiscoveryResponse, JobStatusResponse, TimingStrategy, TargetRegion, RegionInfo, CTAType, SequenceCTA } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { useOrchestration, usePipelineStatus } from "@/hooks/useOrchestration";
 import { PipelineProgress } from "@/components/PipelineProgress";
@@ -60,8 +60,15 @@ export default function DiscoverPage() {
 
   // Auto mode state
   const [orchestrationId, setOrchestrationId] = useState<string | null>(null);
-  const { startAutoMode, isStarting } = useOrchestration();
+  const { startAutoMode, isStarting, error: orchestrationError } = useOrchestration();
   const { status: pipelineStatus } = usePipelineStatus(orchestrationId);
+
+  // Sync orchestration errors to local error state
+  useEffect(() => {
+    if (orchestrationError) {
+      setError(orchestrationError);
+    }
+  }, [orchestrationError]);
 
   // Load mode from localStorage
   useEffect(() => {
@@ -213,34 +220,31 @@ export default function DiscoverPage() {
     if (!solution.trim()) return;
     setError(null);
 
-    // Build CTA object based on type
-    let cta = undefined;
-    if (ctaType !== "reply") {
-      cta = { type: ctaType } as { type: CTAType; calendar_link?: string; custom_link?: string; custom_text?: string };
-      
-      if (ctaType === "book_meeting" || ctaType === "schedule_demo") {
-        if (!calendarLink) {
-          setError("Please set a calendar link in Settings to use this CTA type");
-          return;
-        }
-        cta.calendar_link = calendarLink;
-      } else if (ctaType === "learn_more" || ctaType === "start_trial") {
-        if (!customLink.trim()) {
-          setError("Please enter a link for this CTA type");
-          return;
-        }
-        cta.custom_link = customLink.trim();
-      } else if (ctaType === "custom") {
-        if (!customText.trim()) {
-          setError("Please enter custom CTA text");
-          return;
-        }
-        cta.custom_text = customText.trim();
-        if (customLink.trim()) {
-          cta.custom_link = customLink.trim();
-        }
+    // Validate required fields based on CTA type
+    if (ctaType === "book_meeting" || ctaType === "schedule_demo") {
+      if (!calendarLink) {
+        setError("Please set a calendar link in Settings to use this CTA type");
+        return;
+      }
+    } else if (ctaType === "learn_more" || ctaType === "start_trial") {
+      if (!customLink.trim()) {
+        setError("Please enter a link for this CTA type");
+        return;
+      }
+    } else if (ctaType === "custom") {
+      if (!customText.trim()) {
+        setError("Please enter custom CTA text");
+        return;
       }
     }
+
+    // Build CTA object - only include non-empty fields (backend rejects null/"" for URL fields)
+    const cta: SequenceCTA = {
+      type: ctaType,
+      ...(calendarLink ? { calendar_link: calendarLink } : {}),
+      ...(customText.trim() ? { custom_text: customText.trim() } : {}),
+      ...(customLink.trim() ? { custom_link: customLink.trim() } : {}),
+    };
 
     const result = await startAutoMode(
       solution, 
@@ -259,6 +263,7 @@ export default function DiscoverPage() {
       setOrchestrationId(result.orchestration_id);
       setStep("progress");
     }
+    // If result is null, the error will be captured via orchestrationError hook
   };
 
   const handleSubmit = () => {
