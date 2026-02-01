@@ -70,6 +70,8 @@ export interface Campaign {
   updated_at: string;
   mode?: "auto" | "manual"; // How the campaign was created
   orchestration_id?: string | null; // Only set for auto-mode campaigns
+  target_regions?: string[] | null; // Regions targeted (e.g., "north_america", "europe")
+  target_countries?: string[] | null; // Countries targeted (e.g., "United States", "Germany")
 }
 
 export interface CampaignsResponse {

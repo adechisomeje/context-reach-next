@@ -74,6 +74,47 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
     </svg>
   ),
+  Globe: () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  MapPin: () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  ),
+};
+
+// Region display names
+const regionNames: Record<string, string> = {
+  global: "🌍 Global",
+  africa: "🌍 Africa",
+  asia: "🌏 Asia",
+  europe: "🇪🇺 Europe",
+  north_america: "🌎 North America",
+  south_america: "🌎 South America",
+  middle_east: "🌍 Middle East",
+  oceania: "🌏 Oceania",
+};
+
+// Helper to format location display
+const formatLocation = (campaign: Campaign): string | null => {
+  if (campaign.target_countries && campaign.target_countries.length > 0) {
+    if (campaign.target_countries.length === 1) {
+      return campaign.target_countries[0];
+    }
+    return `${campaign.target_countries[0]} +${campaign.target_countries.length - 1}`;
+  }
+  if (campaign.target_regions && campaign.target_regions.length > 0) {
+    if (campaign.target_regions.length === 1) {
+      return regionNames[campaign.target_regions[0]] || campaign.target_regions[0];
+    }
+    const firstName = regionNames[campaign.target_regions[0]] || campaign.target_regions[0];
+    return `${firstName} +${campaign.target_regions.length - 1}`;
+  }
+  return null;
 };
 
 export default function CampaignsPage() {
@@ -435,6 +476,7 @@ export default function CampaignsPage() {
                 const rate = campaign.total_contacts > 0
                   ? Math.round((campaign.enriched_contacts / campaign.total_contacts) * 100)
                   : 0;
+                const location = formatLocation(campaign);
 
                 return (
                   <Link key={campaign.id} href={`/campaigns/${campaign.id}`}>
@@ -452,9 +494,19 @@ export default function CampaignsPage() {
                       <h3 className="font-semibold text-slate-900 dark:text-white mb-1 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {campaign.name}
                       </h3>
-                      <p className="text-sm text-slate-500 mb-4 line-clamp-2">
+                      <p className="text-sm text-slate-500 mb-3 line-clamp-2">
                         {campaign.solution_description}
                       </p>
+
+                      {/* Location Badge */}
+                      {location && (
+                        <div className="mb-3">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400 rounded-md border border-sky-200 dark:border-sky-800">
+                            <Icons.Globe />
+                            {location}
+                          </span>
+                        </div>
+                      )}
 
                       <div className="flex items-center justify-between text-sm mb-3">
                         <span className="text-slate-500">Contacts</span>
@@ -502,6 +554,9 @@ export default function CampaignsPage() {
                         Status
                       </th>
                       <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-5 py-3">
+                        Location
+                      </th>
+                      <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-5 py-3">
                         Mode
                       </th>
                       <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-5 py-3">
@@ -521,6 +576,7 @@ export default function CampaignsPage() {
                       const rate = campaign.total_contacts > 0
                         ? Math.round((campaign.enriched_contacts / campaign.total_contacts) * 100)
                         : 0;
+                      const location = formatLocation(campaign);
 
                       return (
                         <tr
@@ -547,6 +603,12 @@ export default function CampaignsPage() {
                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border ${getStatusStyle(campaign.status)}`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(campaign.status)}`} />
                               {getStatusLabel(campaign.status)}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                              <Icons.Globe />
+                              {location}
                             </span>
                           </td>
                           <td className="px-5 py-4">
