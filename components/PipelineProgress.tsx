@@ -447,6 +447,7 @@ const phaseAnimations: Record<PipelinePhase, object> = {
 
 interface PipelineProgressProps {
   status: PipelineStatusResponse;
+  onViewCampaignStatus?: () => void;
 }
 
 const phaseConfig: Record<PipelinePhase, { label: string; icon: React.ReactNode; gradient: string; bgGradient: string }> = {
@@ -612,9 +613,11 @@ function ProcessingConnector({
   );
 }
 
-export function PipelineProgress({ status }: PipelineProgressProps) {
+export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgressProps) {
   const phases: PipelinePhase[] = ["discovery", "research", "composition"];
   const summaryRef = useRef<HTMLDivElement>(null);
+
+  const isMultiDay = status.is_multi_day && (status.duration_days ?? 1) > 1;
 
   const getHeaderContent = () => {
     if (status.status === "completed") {
@@ -630,9 +633,13 @@ export function PipelineProgress({ status }: PipelineProgressProps) {
           </div>
           <div>
             <h2 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-              Pipeline Complete!
+              {isMultiDay ? `Day ${status.current_day} Complete!` : "Pipeline Complete!"}
             </h2>
-            <p className="text-slate-500 text-sm">All tasks finished successfully</p>
+            <p className="text-slate-500 text-sm">
+              {isMultiDay 
+                ? `Day ${status.current_day} of ${status.duration_days} finished successfully` 
+                : "All tasks finished successfully"}
+            </p>
           </div>
         </div>
       );
@@ -982,6 +989,49 @@ export function PipelineProgress({ status }: PipelineProgressProps) {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Multi-day campaign next run info */}
+          {isMultiDay && status.status === "completed" && status.next_run_at && (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                    <span className="text-xl">📅</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                      Day {(status.current_day ?? 0) + 1} of {status.duration_days} scheduled
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                      Next run: {new Date(status.next_run_at).toLocaleString(undefined, {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  </div>
+                </div>
+                {status.total_credits_reserved && (
+                  <div className="text-right">
+                    <p className="text-xs text-blue-600 dark:text-blue-400">Credits</p>
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                      {status.credits_consumed ?? 0} / {status.total_credits_reserved}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {onViewCampaignStatus && (
+                <button
+                  onClick={onViewCampaignStatus}
+                  className="mt-3 w-full px-4 py-2 text-sm font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/70 transition-colors"
+                >
+                  View Campaign Status & Controls
+                </button>
+              )}
             </div>
           )}
 

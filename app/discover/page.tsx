@@ -10,10 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DiscoveryResponse, JobStatusResponse, TimingStrategy, TargetRegion, RegionInfo, CTAType, SequenceCTA } from "@/lib/types";
+import { DiscoveryResponse, JobStatusResponse, TimingStrategy, TargetRegion, RegionInfo, CTAType, SequenceCTA, DurationConfig } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { useOrchestration, usePipelineStatus } from "@/hooks/useOrchestration";
 import { PipelineProgress } from "@/components/PipelineProgress";
+import { DurationConfigForm } from "@/components/campaign";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 const POLL_INTERVAL = 2000;
@@ -51,6 +52,10 @@ export default function DiscoverPage() {
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [locationMode, setLocationMode] = useState<"regions" | "countries">("regions");
   const [regionsLoading, setRegionsLoading] = useState(false);
+
+  // Multi-day campaign duration config
+  const [durationConfig, setDurationConfig] = useState<DurationConfig | null>(null);
+  const [userCredits, setUserCredits] = useState<number | null>(null); // null until fetched
 
   // Manual mode discovery state
   const [step, setStep] = useState<DiscoveryStep>("form");
@@ -95,6 +100,22 @@ export default function DiscoverPage() {
       }
     };
     fetchRegions();
+  }, []);
+
+  // Fetch user credits for multi-day campaigns
+  useEffect(() => {
+    const fetchCredits = async () => {
+      try {
+        const response = await authFetch(`${API_URL}/api/auth/credits`);
+        if (response.ok) {
+          const data = await response.json();
+          setUserCredits(data.current_balance ?? 0);
+        }
+      } catch (err) {
+        console.error("Failed to fetch credits:", err);
+      }
+    };
+    fetchCredits();
   }, []);
 
   // Fetch saved calendar link
@@ -256,7 +277,8 @@ export default function DiscoverPage() {
       },
       locationMode === "regions" ? selectedRegions : undefined,
       locationMode === "countries" ? selectedCountries : undefined,
-      cta
+      cta,
+      durationConfig || undefined
     );
 
     if (result) {
@@ -297,6 +319,7 @@ export default function DiscoverPage() {
     setSelectedRegions([]);
     setSelectedCountries([]);
     setLocationMode("regions");
+    setDurationConfig(null);
   };
 
   // Form Step
@@ -576,6 +599,17 @@ export default function DiscoverPage() {
                   </div>
                 )}
 
+                {/* Multi-Day Campaign Duration - Only for Auto Mode */}
+                {mode === "auto" && (
+                  <DurationConfigForm
+                    maxContacts={maxContacts}
+                    enrichCredits={maxContacts}
+                    userCredits={userCredits ?? 0}
+                    userCreditsLoading={userCredits === null}
+                    onChange={setDurationConfig}
+                  />
+                )}
+
                 {/* Target Location Settings - Available for both modes */}
                 <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                   <h4 className="font-medium text-slate-900 dark:text-white mb-4">
@@ -741,7 +775,7 @@ export default function DiscoverPage() {
                       Starting...
                     </span>
                   ) : mode === "auto" ? (
-                    "⚡ Start Auto Pipeline"
+                    durationConfig ? `📅 Start ${durationConfig.duration_days}-Day Campaign` : "⚡ Start Auto Pipeline"
                   ) : (
                     "Start Discovery"
                   )}
@@ -756,6 +790,8 @@ export default function DiscoverPage() {
 
   // Progress Step - Auto Mode
   if (mode === "auto" && orchestrationId) {
+    const isMultiDay = pipelineStatus?.is_multi_day && (pipelineStatus?.duration_days ?? 1) > 1;
+    
     return (
       <div className="h-screen flex flex-col bg-white dark:bg-slate-950">
         {/* Page Header */}
@@ -765,8 +801,15 @@ export default function DiscoverPage() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="px-2 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 rounded">⚡ Auto Mode</span>
+                  {isMultiDay && (
+                    <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded">
+                      📅 Day {pipelineStatus?.current_day} of {pipelineStatus?.duration_days}
+                    </span>
+                  )}
                 </div>
-                <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Pipeline Running</h1>
+                <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
+                  {isMultiDay ? "Multi-Day Campaign Running" : "Pipeline Running"}
+                </h1>
               </div>
               <Link href="/campaigns">
                 <button className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
@@ -794,17 +837,41 @@ export default function DiscoverPage() {
               </div>
             )}
 
-            <div className="mt-6 flex justify-center gap-3">
+            <div className="mt-6 flex flex-col items-center gap-3">
               {(pipelineStatus?.status === "completed" || pipelineStatus?.status === "failed") ? (
                 <>
-                  {pipelineStatus?.campaign_id && (
-                    <button onClick={handleViewCampaign} className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-colors">
-                      View Campaign
-                    </button>
+                  {/* Multi-day campaign next day info */}
+                  {isMultiDay && pipelineStatus?.status === "completed" && pipelineStatus.next_run_at && (
+                    <div className="w-full p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 mb-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">📅</span>
+                        <div>
+                          <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                            Day {pipelineStatus.current_day} complete! Day {(pipelineStatus.current_day ?? 0) + 1} scheduled.
+                          </p>
+                          <p className="text-xs text-blue-600 dark:text-blue-400">
+                            Next run: {new Date(pipelineStatus.next_run_at).toLocaleString(undefined, {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                  <button onClick={handleStartNew} className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    Start New
-                  </button>
+                  <div className="flex gap-3">
+                    {pipelineStatus?.campaign_id && (
+                      <button onClick={handleViewCampaign} className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-colors">
+                        View Campaign
+                      </button>
+                    )}
+                    <button onClick={handleStartNew} className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      Start New
+                    </button>
+                  </div>
                 </>
               ) : (
                 <p className="text-sm text-slate-500">

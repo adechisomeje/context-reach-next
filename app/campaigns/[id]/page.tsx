@@ -9,7 +9,9 @@ import { ContextResearchPanel } from "@/components/ContextResearchPanel";
 import { SequenceCreator } from "@/components/SequenceCreator";
 import { ContactSequenceDetail } from "@/components/ContactSequenceDetail";
 import { CampaignAnalyticsDashboard } from "@/components/CampaignAnalyticsDashboard";
+import { CampaignStatusCard, DailyRunsTable } from "@/components/campaign";
 import { useCampaignAnalytics } from "@/hooks/useAnalytics";
+import { useCampaignStatus } from "@/hooks/useOrchestration";
 import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
@@ -51,8 +53,14 @@ export default function CampaignDetailPage() {
   // Analytics
   const { analytics, loading: analyticsLoading } = useCampaignAnalytics(campaignId);
   
+  // Multi-day campaign status
+  const { status: campaignStatus, refresh: refreshCampaignStatus } = useCampaignStatus(
+    campaign?.mode === "auto" ? campaignId : null
+  );
+  const isMultiDayCampaign = campaignStatus && campaignStatus.duration_days > 1;
+  
   // Active tab
-  const [activeTab, setActiveTab] = useState<"contacts" | "analytics">("contacts");
+  const [activeTab, setActiveTab] = useState<"contacts" | "analytics" | "schedule">("contacts");
 
   // Load mode from localStorage
   useEffect(() => {
@@ -359,6 +367,32 @@ export default function CampaignDetailPage() {
               {campaign.mode === "auto" ? "⚡ Auto" : "Manual"}
             </span>
           </div>
+          {isMultiDayCampaign && campaignStatus && (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500">📅 Schedule:</span>
+                <span className="text-sm font-medium text-slate-900 dark:text-white">
+                  Day {campaignStatus.current_day}/{campaignStatus.duration_days}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                  campaignStatus.status === "active" 
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
+                    : campaignStatus.status === "paused"
+                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                      : campaignStatus.status === "cancelled"
+                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                }`}>
+                  {campaignStatus.status === "active" && "🟢 Active"}
+                  {campaignStatus.status === "paused" && "⏸️ Paused"}
+                  {campaignStatus.status === "cancelled" && "🛑 Cancelled"}
+                  {campaignStatus.status === "completed" && "✅ Completed"}
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Tabs */}
@@ -373,6 +407,21 @@ export default function CampaignDetailPage() {
           >
             Contacts ({totalContacts})
           </button>
+          {isMultiDayCampaign && (
+            <button
+              onClick={() => setActiveTab("schedule")}
+              className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === "schedule"
+                  ? "border-slate-900 dark:border-white text-slate-900 dark:text-white"
+                  : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              }`}
+            >
+              <span>📅</span> Schedule
+              {campaignStatus?.status === "active" && (
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              )}
+            </button>
+          )}
           <button
             onClick={() => setActiveTab("analytics")}
             className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -397,6 +446,19 @@ export default function CampaignDetailPage() {
       <div className="flex-1 overflow-auto">
         {activeTab === "analytics" ? (
           <CampaignAnalyticsDashboard analytics={analytics} loading={analyticsLoading} />
+        ) : activeTab === "schedule" && isMultiDayCampaign && campaignStatus ? (
+          <div className="p-6 max-w-4xl mx-auto space-y-6">
+            {/* Campaign Status Card */}
+            <CampaignStatusCard 
+              campaign={campaignStatus} 
+              onUpdate={refreshCampaignStatus}
+            />
+            
+            {/* Daily Runs Table */}
+            {campaignStatus.daily_runs && campaignStatus.daily_runs.length > 0 && (
+              <DailyRunsTable dailyRuns={campaignStatus.daily_runs} />
+            )}
+          </div>
         ) : (
           <>
             {/* Target Criteria (collapsible) */}

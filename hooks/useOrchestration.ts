@@ -12,6 +12,9 @@ import {
   SequenceConfig,
   TargetRegion,
   SequenceCTA,
+  DurationConfig,
+  CampaignStatusResponse,
+  CampaignAction,
 } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
@@ -149,7 +152,8 @@ export function useOrchestration() {
       sequenceConfig?: Partial<SequenceConfig>,
       targetRegions?: TargetRegion[],
       targetCountries?: string[],
-      cta?: SequenceCTA
+      cta?: SequenceCTA,
+      durationConfig?: DurationConfig
     ): Promise<AutoStartResponse | null> => {
       setIsStarting(true);
       setError(null);
@@ -167,6 +171,7 @@ export function useOrchestration() {
             timing_strategy: sequenceConfig?.timing_strategy ?? "human_like",
             ...(cta && { cta }),
           },
+          ...(durationConfig && { duration_config: durationConfig }),
         };
 
         const response = await authFetch(
@@ -180,6 +185,10 @@ export function useOrchestration() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+          // Handle insufficient credits (402)
+          if (response.status === 402) {
+            throw new Error(errorData.detail || "Insufficient credits");
+          }
           throw new Error(errorData.detail || "Failed to start auto mode");
         }
 
@@ -271,6 +280,114 @@ export function useOrchestration() {
     researchAll,
     composeAll,
     isStarting,
+    error,
+    clearError: () => setError(null),
+  };
+}
+
+// Hook for multi-day campaign status
+export function useCampaignStatus(campaignId: string | null) {
+  const [status, setStatus] = useState<CampaignStatusResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!campaignId) return;
+    
+    try {
+      setLoading(true);
+      const response = await authFetch(
+        `${API_URL}/api/orchestration/campaign/${campaignId}/status`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch campaign status");
+      }
+
+      const data: CampaignStatusResponse = await response.json();
+      setStatus(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }, [campaignId]);
+
+  useEffect(() => {
+    if (!campaignId) {
+      setStatus(null);
+      return;
+    }
+
+    refresh();
+
+    // Poll every 30 seconds for active campaigns
+    const interval = setInterval(() => {
+      if (status?.status === 'active' || status?.status === 'paused') {
+        refresh();
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [campaignId, refresh, status?.status]);
+
+  return { status, loading, error, refresh };
+}
+
+// Hook for campaign actions (pause, resume, cancel)
+export function useCampaignActions() {
+  const [loading, setLoading] = useState<CampaignAction | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const performAction = useCallback(
+    async (campaignId: string, action: CampaignAction): Promise<CampaignStatusResponse | null> => {
+      setLoading(action);
+      setError(null);
+
+      try {
+        const response = await authFetch(
+          `${API_URL}/api/orchestration/campaign/${campaignId}/${action}`,
+          { method: "POST" }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.detail || `Failed to ${action} campaign`);
+        }
+
+        return await response.json();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        setError(message);
+        return null;
+      } finally {
+        setLoading(null);
+      }
+    },
+    []
+  );
+
+  const pauseCampaign = useCallback(
+    (campaignId: string) => performAction(campaignId, "pause"),
+    [performAction]
+  );
+
+  const resumeCampaign = useCallback(
+    (campaignId: string) => performAction(campaignId, "resume"),
+    [performAction]
+  );
+
+  const cancelCampaign = useCallback(
+    (campaignId: string) => performAction(campaignId, "cancel"),
+    [performAction]
+  );
+
+  return {
+    pauseCampaign,
+    resumeCampaign,
+    cancelCampaign,
+    loading,
     error,
     clearError: () => setError(null),
   };

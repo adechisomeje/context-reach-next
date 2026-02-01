@@ -391,6 +391,13 @@ export interface PipelineStatusResponse {
   };
   summary: PipelineSummary | null;
   error: string | null;
+  // Multi-day campaign fields
+  is_multi_day?: boolean;
+  duration_days?: number;
+  current_day?: number;
+  total_credits_reserved?: number;
+  credits_consumed?: number;
+  next_run_at?: string | null;
 }
 
 export type TargetRegion = "global" | "africa" | "asia" | "europe" | "north_america" | "south_america" | "middle_east" | "oceania";
@@ -405,6 +412,13 @@ export interface SequenceCTA {
   custom_text?: string;
 }
 
+// Duration configuration for multi-day campaigns
+export interface DurationConfig {
+  duration_days: number;      // 1-20 workdays
+  preferred_run_hour: number; // 0-23
+  // Note: contacts_per_day uses the max_contacts value from the main request
+}
+
 export interface AutoStartRequest {
   solution_description: string;
   max_contacts: number;
@@ -417,6 +431,7 @@ export interface AutoStartRequest {
     timing_strategy: TimingStrategy;
     cta?: SequenceCTA;
   };
+  duration_config?: DurationConfig;  // Optional - omit for single-day
 }
 
 export interface AutoStartResponse {
@@ -426,6 +441,46 @@ export interface AutoStartResponse {
   status: string;
   message: string;
   mode: "auto";
+  // Multi-day fields
+  duration_days?: number;
+  current_day?: number;
+  total_credits_reserved?: number;
+  next_run_at?: string | null;
+}
+
+// Daily run status for multi-day campaigns
+export type DailyRunStatus = 'pending' | 'scheduled' | 'running' | 'completed' | 'failed' | 'skipped';
+
+export interface DailyRun {
+  day_number: number;
+  status: DailyRunStatus;
+  contacts_discovered: number;
+  contacts_researched: number;
+  sequences_created: number;
+  credits_used: number;
+  scheduled_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  error: string | null;
+}
+
+// Campaign status response for multi-day campaigns
+export type CampaignStatus = 'active' | 'paused' | 'cancelled' | 'completed';
+export type CampaignAction = 'pause' | 'resume' | 'cancel';
+
+export interface CampaignStatusResponse {
+  campaign_id: string;
+  status: CampaignStatus;
+  message: string;
+  duration_days: number;
+  current_day: number;
+  is_paused: boolean;
+  is_cancelled: boolean;
+  total_credits_reserved: number;
+  credits_consumed: number;
+  credits_refunded?: number;
+  next_run_at: string | null;
+  daily_runs?: DailyRun[];
 }
 
 export interface RegionInfo {
