@@ -619,26 +619,38 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
 
   const isMultiDay = status.is_multi_day && (status.duration_days ?? 1) > 1;
 
+  // Safe access to phase config with fallback to discovery
+  const currentPhaseConfig = phaseConfig[status.phase] || phaseConfig.discovery;
+
   const getHeaderContent = () => {
-    if (status.status === "completed") {
+    // Handle completed status (including day_completed for multi-day campaigns)
+    if (status.status === "completed" || status.status === "day_completed") {
+      const isDayComplete = status.status === "day_completed";
+      const currentDay = status.current_day ?? 1;
+      const totalDays = status.duration_days ?? 1;
+      
       return (
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 flex items-center justify-center animate-pulse">
+            <div className={`w-12 h-12 rounded-full bg-gradient-to-r ${isDayComplete ? "from-blue-400 to-indigo-500" : "from-green-400 to-emerald-500"} flex items-center justify-center animate-pulse`}>
               <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 opacity-30 blur-md animate-pulse" />
+            <div className={`absolute -inset-1 rounded-full bg-gradient-to-r ${isDayComplete ? "from-blue-400 to-indigo-500" : "from-green-400 to-emerald-500"} opacity-30 blur-md animate-pulse`} />
           </div>
           <div>
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-              {isMultiDay ? `Day ${status.current_day} Complete!` : "Pipeline Complete!"}
+            <h2 className={`text-2xl font-bold bg-gradient-to-r ${isDayComplete ? "from-blue-600 to-indigo-600" : "from-green-600 to-emerald-600"} bg-clip-text text-transparent`}>
+              {isDayComplete 
+                ? `Day ${currentDay} Complete!` 
+                : isMultiDay 
+                  ? "Campaign Complete!" 
+                  : "Pipeline Complete!"}
             </h2>
             <p className="text-slate-500 text-sm">
-              {isMultiDay 
-                ? `Day ${status.current_day} of ${status.duration_days} finished successfully` 
-                : "All tasks finished successfully"}
+              {status.message || (isDayComplete 
+                ? `Day ${currentDay} of ${totalDays} finished. Next run scheduled.`
+                : "All tasks finished successfully")}
             </p>
           </div>
         </div>
@@ -655,25 +667,24 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
           </div>
           <div>
             <h2 className="text-2xl font-bold text-red-600">Pipeline Failed</h2>
-            <p className="text-slate-500 text-sm">An error occurred during processing</p>
+            <p className="text-slate-500 text-sm">{status.message || status.error || "An error occurred during processing"}</p>
           </div>
         </div>
       );
     }
 
-    const currentConfig = phaseConfig[status.phase];
     return (
       <div className="flex items-center gap-3">
-        <div className={`relative w-12 h-12 rounded-full bg-gradient-to-r ${currentConfig.gradient} flex items-center justify-center text-white`}>
-          {currentConfig.icon}
-          <div className={`absolute -inset-1 rounded-full bg-gradient-to-r ${currentConfig.gradient} opacity-30 blur-md animate-pulse`} />
+        <div className={`relative w-12 h-12 rounded-full bg-gradient-to-r ${currentPhaseConfig.gradient} flex items-center justify-center text-white`}>
+          {currentPhaseConfig.icon}
+          <div className={`absolute -inset-1 rounded-full bg-gradient-to-r ${currentPhaseConfig.gradient} opacity-30 blur-md animate-pulse`} />
         </div>
         <div>
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
             Pipeline Running
           </h2>
-          <p className={`text-sm font-medium bg-gradient-to-r ${currentConfig.gradient} bg-clip-text text-transparent`}>
-            {currentConfig.label}
+          <p className={`text-sm font-medium bg-gradient-to-r ${currentPhaseConfig.gradient} bg-clip-text text-transparent`}>
+            {status.message || currentPhaseConfig.label}
           </p>
         </div>
       </div>
@@ -690,8 +701,8 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
           <CardTitle className="flex items-center justify-between">
             {getHeaderContent()}
             
-            {/* Live indicator */}
-            {status.status !== "completed" && status.status !== "failed" && (
+            {/* Live indicator - show only when actively processing */}
+            {status.status !== "completed" && status.status !== "failed" && status.status !== "day_completed" && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30">
                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                 <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Live</span>
@@ -811,8 +822,8 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
             })}
           </div>
 
-          {/* Active Phase Animation Panel */}
-          {status.status !== "completed" && status.status !== "failed" && (
+          {/* Active Phase Animation Panel - show only when actively processing */}
+          {status.status !== "completed" && status.status !== "failed" && status.status !== "day_completed" && (
             <div className="activity-panel relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-900/50 border border-slate-200 dark:border-slate-700">
               <div className="absolute inset-0 overflow-hidden">
                 <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-violet-200/30 to-purple-200/30 dark:from-violet-800/20 dark:to-purple-800/20 rounded-full blur-3xl" />
@@ -822,10 +833,10 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
               <div className="relative flex items-center gap-6 p-6">
                 {/* Lottie Animation */}
                 <div className="flex-shrink-0 w-32 h-32 relative">
-                  <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${phaseConfig[status.phase].bgGradient} animate-pulse`} />
+                  <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${currentPhaseConfig.bgGradient} animate-pulse`} />
                   <div className="relative w-full h-full flex items-center justify-center">
                     <Lottie
-                      animationData={phaseAnimations[status.phase]}
+                      animationData={phaseAnimations[status.phase] || phaseAnimations.discovery}
                       loop={true}
                       style={{ width: 120, height: 120 }}
                     />
@@ -835,14 +846,14 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
                 {/* Activity Details */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${phaseConfig[status.phase].gradient} animate-pulse`} />
+                    <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${currentPhaseConfig.gradient} animate-pulse`} />
                     <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Currently Processing
                     </span>
                   </div>
                   
-                  <h3 className={`text-xl font-bold mb-2 bg-gradient-to-r ${phaseConfig[status.phase].gradient} bg-clip-text text-transparent`}>
-                    {phaseConfig[status.phase].label}
+                  <h3 className={`text-xl font-bold mb-2 bg-gradient-to-r ${currentPhaseConfig.gradient} bg-clip-text text-transparent`}>
+                    {currentPhaseConfig.label}
                   </h3>
                   
                   <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
@@ -855,20 +866,20 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-500">
-                        {status.progress[status.phase].completed} of {status.progress[status.phase].total} items processed
+                        {(status.progress[status.phase]?.completed ?? 0)} of {(status.progress[status.phase]?.total ?? 0)} items processed
                       </span>
-                      <span className={`font-bold bg-gradient-to-r ${phaseConfig[status.phase].gradient} bg-clip-text text-transparent`}>
-                        {status.progress[status.phase].total > 0 
-                          ? Math.round((status.progress[status.phase].completed / status.progress[status.phase].total) * 100)
+                      <span className={`font-bold bg-gradient-to-r ${currentPhaseConfig.gradient} bg-clip-text text-transparent`}>
+                        {(status.progress[status.phase]?.total ?? 0) > 0 
+                          ? Math.round(((status.progress[status.phase]?.completed ?? 0) / (status.progress[status.phase]?.total ?? 1)) * 100)
                           : 0}%
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                       <div 
-                        className={`h-full rounded-full bg-gradient-to-r ${phaseConfig[status.phase].gradient} transition-all duration-500`}
+                        className={`h-full rounded-full bg-gradient-to-r ${currentPhaseConfig.gradient} transition-all duration-500`}
                         style={{ 
-                          width: `${status.progress[status.phase].total > 0 
-                            ? (status.progress[status.phase].completed / status.progress[status.phase].total) * 100 
+                          width: `${(status.progress[status.phase]?.total ?? 0) > 0 
+                            ? ((status.progress[status.phase]?.completed ?? 0) / (status.progress[status.phase]?.total ?? 1)) * 100 
                             : 0}%` 
                         }}
                       />
@@ -878,7 +889,7 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
 
                 {/* Decorative elements */}
                 <div className="hidden lg:flex flex-col gap-3 items-center">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${phaseConfig[status.phase].bgGradient} flex items-center justify-center`}>
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${currentPhaseConfig.bgGradient} flex items-center justify-center`}>
                     <div className="text-2xl">
                       {status.phase === "discovery" && "🔍"}
                       {status.phase === "research" && "💡"}
@@ -886,9 +897,9 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${phaseConfig[status.phase].gradient} animate-bounce`} style={{ animationDelay: "0ms" }} />
-                    <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${phaseConfig[status.phase].gradient} animate-bounce`} style={{ animationDelay: "150ms" }} />
-                    <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${phaseConfig[status.phase].gradient} animate-bounce`} style={{ animationDelay: "300ms" }} />
+                    <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${currentPhaseConfig.gradient} animate-bounce`} style={{ animationDelay: "0ms" }} />
+                    <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${currentPhaseConfig.gradient} animate-bounce`} style={{ animationDelay: "150ms" }} />
+                    <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${currentPhaseConfig.gradient} animate-bounce`} style={{ animationDelay: "300ms" }} />
                   </div>
                 </div>
               </div>
@@ -896,7 +907,7 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
           )}
 
           {/* Success Animation when complete */}
-          {status.status === "completed" && !status.summary && (
+          {(status.status === "completed" || status.status === "day_completed") && !status.summary && (
             <div className="flex items-center justify-center py-8">
               <div className="w-40 h-40">
                 <Lottie
@@ -992,8 +1003,8 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
             </div>
           )}
 
-          {/* Multi-day campaign next run info */}
-          {isMultiDay && status.status === "completed" && status.next_run_at && (
+          {/* Multi-day campaign next run info - show when day is complete with more days to go */}
+          {isMultiDay && (status.status === "completed" || status.status === "day_completed") && status.next_run_at && (
             <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -1002,7 +1013,7 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
                   </div>
                   <div>
                     <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                      Day {(status.current_day ?? 0) + 1} of {status.duration_days} scheduled
+                      Day {(status.current_day ?? 0) + 1} of {status.duration_days ?? 1} scheduled
                     </p>
                     <p className="text-xs text-blue-600 dark:text-blue-400">
                       Next run: {new Date(status.next_run_at).toLocaleString(undefined, {
@@ -1035,14 +1046,14 @@ export function PipelineProgress({ status, onViewCampaignStatus }: PipelineProgr
             </div>
           )}
 
-          {/* Link to campaign while in progress */}
+          {/* Link to campaign while in progress or between days */}
           {status.status !== "completed" && status.campaign_id && (
             <div className="text-center pt-2">
               <Link
                 href={`/campaigns/${status.campaign_id}`}
                 className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
               >
-                View campaign progress
+                {status.status === "day_completed" ? "View today's results" : "View campaign progress"}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>

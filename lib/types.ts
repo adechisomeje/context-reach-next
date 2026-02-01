@@ -363,7 +363,7 @@ export interface CampaignAnalytics {
 // Orchestration Types (Auto/Manual Mode)
 export type PipelinePhase = "discovery" | "research" | "composition";
 export type PhaseStatus = "pending" | "in_progress" | "completed" | "failed";
-export type PipelineStatus = "waiting_for_discovery" | "researching" | "composing" | "completed" | "failed";
+export type PipelineStatus = "waiting_for_discovery" | "researching" | "composing" | "completed" | "failed" | "day_completed";
 
 export interface PhaseProgress {
   status: PhaseStatus;
@@ -384,6 +384,7 @@ export interface PipelineStatusResponse {
   campaign_id: string;
   status: PipelineStatus;
   phase: PipelinePhase;
+  message?: string | null;  // User-friendly status message from backend
   progress: {
     discovery: PhaseProgress;
     research: PhaseProgress;
