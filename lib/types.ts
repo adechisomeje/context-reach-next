@@ -574,3 +574,23 @@ export interface OrgSuggestion {
     message: string;
   } | null;
 }
+
+// Website Analysis Types
+export interface WebsiteAnalysisRequest {
+  website_url: string;
+  additional_context?: string;
+}
+
+export interface WebsiteAnalysisResponse {
+  success: boolean;
+  error?: string;
+  solution_description?: string;
+  company_name?: string;
+  product_category?: string;
+  key_features?: string[];
+  target_audience?: string;
+  value_propositions?: string[];
+  pain_points_addressed?: string[];
+  confidence_score?: number;
+  raw_content_summary?: string;
+}

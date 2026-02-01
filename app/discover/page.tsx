@@ -10,23 +10,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DiscoveryResponse, JobStatusResponse, TimingStrategy, TargetRegion, RegionInfo, CTAType, SequenceCTA, DurationConfig } from "@/lib/types";
+import { DiscoveryResponse, JobStatusResponse, TimingStrategy, TargetRegion, RegionInfo, CTAType, SequenceCTA, DurationConfig, WebsiteAnalysisResponse } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { useOrchestration, usePipelineStatus } from "@/hooks/useOrchestration";
 import { PipelineProgress } from "@/components/PipelineProgress";
 import { DurationConfigForm } from "@/components/campaign";
+import { WebsiteAnalyzer } from "@/components/WebsiteAnalyzer";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 const POLL_INTERVAL = 2000;
 
 type Mode = "auto" | "manual";
 type DiscoveryStep = "form" | "progress" | "complete";
+type SolutionInputMode = "manual" | "website";
 
 export default function DiscoverPage() {
   const router = useRouter();
 
   // Mode state
   const [mode, setMode] = useState<Mode>("manual");
+
+  // Solution input mode (manual text vs website analysis)
+  const [solutionInputMode, setSolutionInputMode] = useState<SolutionInputMode>("manual");
+  const [websiteAnalysisResult, setWebsiteAnalysisResult] = useState<WebsiteAnalysisResponse | null>(null);
 
   // Form state
   const [solution, setSolution] = useState("");
@@ -320,6 +326,8 @@ export default function DiscoverPage() {
     setSelectedCountries([]);
     setLocationMode("regions");
     setDurationConfig(null);
+    setSolutionInputMode("manual");
+    setWebsiteAnalysisResult(null);
   };
 
   // Form Step
@@ -387,20 +395,87 @@ export default function DiscoverPage() {
             {/* Main Form */}
             <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <div className="p-6 space-y-6">
-                {/* Solution Input */}
+                {/* Solution Input Section */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                  <label className="block text-sm font-medium text-slate-900 dark:text-white mb-3">
                     Solution Description
                   </label>
-                  <textarea
-                    placeholder="Example: We provide a biometric identity platform for securing distributed operations and eliminating fraud in logistics and supply chain..."
-                    value={solution}
-                    onChange={(e) => setSolution(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white/20 focus:border-transparent resize-none min-h-[120px]"
-                  />
-                  <p className="text-xs text-slate-500 mt-2">
-                    Be specific about what problem you solve and who benefits
-                  </p>
+                  
+                  {/* Input Mode Toggle */}
+                  <div className="flex gap-2 mb-4">
+                    <button
+                      onClick={() => setSolutionInputMode("manual")}
+                      className={`flex-1 p-3 rounded-lg border-2 transition-all text-left ${
+                        solutionInputMode === "manual"
+                          ? "border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800"
+                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">📝</span>
+                        <div>
+                          <p className={`text-sm font-medium ${solutionInputMode === "manual" ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"}`}>
+                            Write Manually
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-500">
+                            Enter your solution description directly
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setSolutionInputMode("website")}
+                      className={`flex-1 p-3 rounded-lg border-2 transition-all text-left ${
+                        solutionInputMode === "website"
+                          ? "border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🌐</span>
+                        <div>
+                          <p className={`text-sm font-medium ${solutionInputMode === "website" ? "text-blue-700 dark:text-blue-300" : "text-slate-600 dark:text-slate-400"}`}>
+                            Analyze My Website
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-500">
+                            Let AI generate a description from your site
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Manual Input or Website Analyzer */}
+                  {solutionInputMode === "manual" ? (
+                    <>
+                      <textarea
+                        placeholder="Example: We provide a biometric identity platform for securing distributed operations and eliminating fraud in logistics and supply chain..."
+                        value={solution}
+                        onChange={(e) => setSolution(e.target.value)}
+                        className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white/20 focus:border-transparent resize-none min-h-[120px]"
+                      />
+                      <p className="text-xs text-slate-500 mt-2">
+                        Be specific about what problem you solve and who benefits
+                      </p>
+                      {websiteAnalysisResult && (
+                        <div className="mt-2 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                          <p className="text-xs text-green-700 dark:text-green-300">
+                            ✅ Generated from website analysis • {websiteAnalysisResult.company_name && `${websiteAnalysisResult.company_name} • `}
+                            {websiteAnalysisResult.confidence_score}% confidence
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <WebsiteAnalyzer
+                      onAnalysisComplete={(description, metadata) => {
+                        setSolution(description);
+                        setWebsiteAnalysisResult(metadata);
+                        setSolutionInputMode("manual");
+                      }}
+                      onCancel={() => setSolutionInputMode("manual")}
+                    />
+                  )}
                 </div>
 
                 {/* Settings Grid */}
