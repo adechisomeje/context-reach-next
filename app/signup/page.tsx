@@ -47,13 +47,26 @@ export default function SignupPage() {
     setIsGoogleLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/google/auth-url`);
+      const authUrl = `${API_URL}/api/auth/google/auth-url`;
+      console.log("Fetching Google auth URL from:", authUrl);
+      
+      const response = await fetch(authUrl);
+      
       if (!response.ok) {
-        throw new Error("Failed to get Google sign-up URL");
+        const errorText = await response.text();
+        console.error("Google auth URL error:", response.status, errorText);
+        throw new Error(`Failed to get Google sign-up URL (${response.status})`);
       }
+      
       const data = await response.json();
+      
+      if (!data.auth_url) {
+        throw new Error("No auth URL returned from server");
+      }
+      
       window.location.href = data.auth_url;
     } catch (err) {
+      console.error("Google sign-up error:", err);
       setError(err instanceof Error ? err.message : "Google sign-up failed");
       setIsGoogleLoading(false);
     }

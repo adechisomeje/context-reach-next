@@ -49,13 +49,26 @@ export default function LoginPage() {
     setIsGoogleLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/google/auth-url`);
+      const authUrl = `${API_URL}/api/auth/google/auth-url`;
+      console.log("Fetching Google auth URL from:", authUrl);
+      
+      const response = await fetch(authUrl);
+      
       if (!response.ok) {
-        throw new Error("Failed to get Google sign-in URL");
+        const errorText = await response.text();
+        console.error("Google auth URL error:", response.status, errorText);
+        throw new Error(`Failed to get Google sign-in URL (${response.status})`);
       }
+      
       const data = await response.json();
+      
+      if (!data.auth_url) {
+        throw new Error("No auth URL returned from server");
+      }
+      
       window.location.href = data.auth_url;
     } catch (err) {
+      console.error("Google sign-in error:", err);
       setError(err instanceof Error ? err.message : "Google sign-in failed");
       setIsGoogleLoading(false);
     }
