@@ -20,8 +20,7 @@ import {
 } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { useSequence } from "@/hooks/useSequence";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_URL } from "@/lib/config";
 const COMPOSE_API_URL =
   process.env.NEXT_PUBLIC_COMPOSE_API_URL || "http://localhost:8003";
 

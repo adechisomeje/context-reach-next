@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signup } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_URL } from "@/lib/config";
 
 export default function SignupPage() {
   const router = useRouter();

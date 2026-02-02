@@ -8,8 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { WebsiteAnalysisResponse } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_URL } from "@/lib/config";
 
 interface WebsiteAnalyzerProps {
   onAnalysisComplete: (description: string, metadata: WebsiteAnalysisResponse) => void;

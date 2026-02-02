@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_URL } from "./config";
 
 export interface User {
   id: string;

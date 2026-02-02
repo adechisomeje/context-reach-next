@@ -12,12 +12,12 @@ import {
 } from "@/components/ui/select";
 import { DiscoveryResponse, JobStatusResponse, TimingStrategy, TargetRegion, RegionInfo, CTAType, SequenceCTA, DurationConfig, WebsiteAnalysisResponse } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 import { useOrchestration, usePipelineStatus } from "@/hooks/useOrchestration";
 import { PipelineProgress } from "@/components/PipelineProgress";
 import { DurationConfigForm } from "@/components/campaign";
 import { WebsiteAnalyzer } from "@/components/WebsiteAnalyzer";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 const POLL_INTERVAL = 2000;
 
 type Mode = "auto" | "manual";

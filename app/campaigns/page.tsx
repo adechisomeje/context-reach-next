@@ -4,8 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Campaign, CampaignsResponse } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_URL } from "@/lib/config";
 
 // Icons
 const Icons = {

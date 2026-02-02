@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Campaign, CampaignContactsResponse, Contact, ContextResearchResponse, Message, MessagesResponse } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 import { ContextResearchPanel } from "@/components/ContextResearchPanel";
 import { SequenceCreator } from "@/components/SequenceCreator";
 import { ContactSequenceDetail } from "@/components/ContactSequenceDetail";
@@ -13,8 +14,6 @@ import { CampaignStatusCard, DailyRunsTable } from "@/components/campaign";
 import { useCampaignAnalytics } from "@/hooks/useAnalytics";
 import { useCampaignStatus } from "@/hooks/useOrchestration";
 import { useRouter } from "next/navigation";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 const CONTEXT_API_URL = process.env.NEXT_PUBLIC_CONTEXT_API_URL || "http://localhost:8002";
 const COMPOSE_API_URL = process.env.NEXT_PUBLIC_COMPOSE_API_URL || "http://localhost:8003";
 

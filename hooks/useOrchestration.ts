@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { authFetch } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 import {
   PipelineStatusResponse,
   AutoStartRequest,
@@ -16,8 +17,6 @@ import {
   CampaignStatusResponse,
   CampaignAction,
 } from "@/lib/types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 
 // Hook for Auto Mode pipeline status
 export function usePipelineStatus(orchestrationId: string | null) {

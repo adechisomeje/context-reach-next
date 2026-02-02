@@ -16,8 +16,7 @@ import {
 import { EmailSignature, CreateSignatureRequest, Organization, OrgMember, OrgInvite, OrgRole, OrgContactStats, PendingInvite } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+import { API_URL } from "@/lib/config";
 const OAUTH_API_URL = process.env.NEXT_PUBLIC_OAUTH_API_URL || "http://localhost:8004";
 
 // Default HTML signature template
