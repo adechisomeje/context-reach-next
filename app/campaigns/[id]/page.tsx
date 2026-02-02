@@ -14,8 +14,6 @@ import { CampaignStatusCard, DailyRunsTable } from "@/components/campaign";
 import { useCampaignAnalytics } from "@/hooks/useAnalytics";
 import { useCampaignStatus } from "@/hooks/useOrchestration";
 import { useRouter } from "next/navigation";
-const CONTEXT_API_URL = process.env.NEXT_PUBLIC_CONTEXT_API_URL || "http://localhost:8002";
-const COMPOSE_API_URL = process.env.NEXT_PUBLIC_COMPOSE_API_URL || "http://localhost:8003";
 
 export default function CampaignDetailPage() {
   const params = useParams();
@@ -93,7 +91,7 @@ export default function CampaignDetailPage() {
 
       try {
         const messagesResponse = await authFetch(
-          COMPOSE_API_URL + "/api/messages?campaign_id=" + campaignId
+          API_URL + "/api/messages?campaign_id=" + campaignId
         );
         if (messagesResponse.ok) {
           const messagesData: MessagesResponse = await messagesResponse.json();
@@ -115,7 +113,7 @@ export default function CampaignDetailPage() {
         contactsData.contacts.map(async (contact) => {
           try {
             const seqResponse = await authFetch(
-              `${COMPOSE_API_URL}/api/sequence/${contact.id}?campaign_id=${campaignId}`
+              `${API_URL}/api/sequence/${contact.id}?campaign_id=${campaignId}`
             );
             if (seqResponse.ok) {
               const seqData = await seqResponse.json();
@@ -153,7 +151,7 @@ export default function CampaignDetailPage() {
     setResearchError(null);
 
     try {
-      const response = await authFetch(CONTEXT_API_URL + "/api/research", {
+      const response = await authFetch(API_URL + "/api/research", {
         method: "POST",
         body: JSON.stringify({
           contact_id: contact.id,
@@ -190,7 +188,7 @@ export default function CampaignDetailPage() {
 
     if (contact.has_research) {
       try {
-        const response = await authFetch(`${CONTEXT_API_URL}/api/context/${contact.id}`);
+        const response = await authFetch(`${API_URL}/api/context/${contact.id}`);
         if (response.ok) {
           const data = await response.json();
           const intelligenceData = data.context || data;

@@ -17,7 +17,6 @@ import { EmailSignature, CreateSignatureRequest, Organization, OrgMember, OrgInv
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
 import { API_URL } from "@/lib/config";
-const OAUTH_API_URL = process.env.NEXT_PUBLIC_OAUTH_API_URL || "http://localhost:8004";
 
 // Default HTML signature template
 const DEFAULT_SIGNATURE_HTML = `<p>Best regards,</p>
@@ -120,7 +119,7 @@ export default function SettingsPage() {
     
     setGmailLoading(true);
     try {
-      const response = await authFetch(`${OAUTH_API_URL}/api/oauth/google/status?user_id=${user.id}`);
+      const response = await authFetch(`${API_URL}/api/oauth/google/status?user_id=${user.id}`);
       if (response.ok) {
         const data = await response.json();
         setGmailStatus(data);
@@ -173,7 +172,7 @@ export default function SettingsPage() {
     
     setGmailConnecting(true);
     try {
-      const response = await authFetch(`${OAUTH_API_URL}/api/oauth/google/auth-url?user_id=${user.id}`);
+      const response = await authFetch(`${API_URL}/api/oauth/google/auth-url?user_id=${user.id}`);
       if (response.ok) {
         const data = await response.json();
         window.location.href = data.auth_url;
@@ -199,7 +198,7 @@ export default function SettingsPage() {
     setGmailDisconnecting(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${OAUTH_API_URL}/api/oauth/google/disconnect?user_id=${user.id}`, {
+      const response = await fetch(`${API_URL}/api/oauth/google/disconnect?user_id=${user.id}`, {
         method: "POST",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

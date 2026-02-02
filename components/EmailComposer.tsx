@@ -22,7 +22,6 @@ import {
 import { authFetch } from "@/lib/auth";
 import Link from "next/link";
 import { API_URL } from "@/lib/config";
-const COMPOSE_API_URL = process.env.NEXT_PUBLIC_COMPOSE_API_URL || "http://localhost:8003";
 
 interface EmailComposerProps {
   contact: Contact;
@@ -116,7 +115,7 @@ export function EmailComposer({
     setPreview(null);
 
     try {
-      const response = await authFetch(`${COMPOSE_API_URL}/api/compose/preview`, {
+      const response = await authFetch(`${API_URL}/api/compose/preview`, {
         method: "POST",
         body: JSON.stringify({
           contact_id: contact.id,
@@ -152,7 +151,7 @@ export function EmailComposer({
     setError(null);
 
     try {
-      const response = await authFetch(`${COMPOSE_API_URL}/api/compose`, {
+      const response = await authFetch(`${API_URL}/api/compose`, {
         method: "POST",
         body: JSON.stringify({
           contact_id: contact.id,

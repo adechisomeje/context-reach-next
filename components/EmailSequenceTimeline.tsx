@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SequenceStep, MessageStatus, SequenceState } from "@/lib/types";
+import { API_URL } from "@/lib/config";
 
 interface EmailPreview {
   subject: string;
@@ -129,8 +130,6 @@ export function EmailSequenceTimeline({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
-  const COMPOSE_API_URL = process.env.NEXT_PUBLIC_COMPOSE_API_URL || "http://localhost:8003";
-
   // Get current preview from cache
   const emailPreview = previewingStep !== null ? previewCache[previewingStep] : null;
 
@@ -147,7 +146,7 @@ export function EmailSequenceTimeline({
     setPreviewingStep(step);
     
     try {
-      const response = await fetch(`${COMPOSE_API_URL}/api/compose/preview`, {
+      const response = await fetch(`${API_URL}/api/compose/preview`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

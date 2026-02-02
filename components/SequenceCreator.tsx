@@ -21,8 +21,6 @@ import {
 import { authFetch } from "@/lib/auth";
 import { useSequence } from "@/hooks/useSequence";
 import { API_URL } from "@/lib/config";
-const COMPOSE_API_URL =
-  process.env.NEXT_PUBLIC_COMPOSE_API_URL || "http://localhost:8003";
 
 interface SequenceCreatorProps {
   contact: Contact;
@@ -109,7 +107,7 @@ export function SequenceCreator({
         timing_strategy: timingStrategy,
       };
 
-      const response = await authFetch(`${COMPOSE_API_URL}/api/sequence/create`, {
+      const response = await authFetch(`${API_URL}/api/sequence/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

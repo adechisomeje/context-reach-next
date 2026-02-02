@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { authFetch } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 import {
   SequenceStatusResponse,
   CreateSequenceRequest,
@@ -9,8 +10,6 @@ import {
   SequenceConfig,
   SignaturePayload,
 } from "@/lib/types";
-
-const COMPOSE_API_URL = process.env.NEXT_PUBLIC_COMPOSE_API_URL || "http://localhost:8003";
 
 export function useSequence(contactId: string, campaignId?: string) {
   const [data, setData] = useState<SequenceStatusResponse | null>(null);
@@ -29,8 +28,8 @@ export function useSequence(contactId: string, campaignId?: string) {
       setError(null);
       
       const url = campaignId
-        ? `${COMPOSE_API_URL}/api/sequence/${contactId}?campaign_id=${campaignId}`
-        : `${COMPOSE_API_URL}/api/sequence/${contactId}`;
+        ? `${API_URL}/api/sequence/${contactId}?campaign_id=${campaignId}`
+        : `${API_URL}/api/sequence/${contactId}`;
 
       const res = await authFetch(url);
       
@@ -81,7 +80,7 @@ export function useSequence(contactId: string, campaignId?: string) {
         signature,
       };
 
-      const res = await authFetch(`${COMPOSE_API_URL}/api/sequence/create`, {
+      const res = await authFetch(`${API_URL}/api/sequence/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
@@ -107,7 +106,7 @@ export function useSequence(contactId: string, campaignId?: string) {
     try {
       setError(null);
       const res = await authFetch(
-        `${COMPOSE_API_URL}/api/sequence/${contactId}/pause`,
+        `${API_URL}/api/sequence/${contactId}/pause`,
         { method: "POST" }
       );
       if (!res.ok) throw new Error("Failed to pause sequence");
@@ -121,7 +120,7 @@ export function useSequence(contactId: string, campaignId?: string) {
     try {
       setError(null);
       const res = await authFetch(
-        `${COMPOSE_API_URL}/api/sequence/${contactId}/resume`,
+        `${API_URL}/api/sequence/${contactId}/resume`,
         { method: "POST" }
       );
       if (!res.ok) throw new Error("Failed to resume sequence");
@@ -135,7 +134,7 @@ export function useSequence(contactId: string, campaignId?: string) {
     try {
       setError(null);
       const res = await authFetch(
-        `${COMPOSE_API_URL}/api/sequence/${contactId}`,
+        `${API_URL}/api/sequence/${contactId}`,
         { method: "DELETE" }
       );
       if (!res.ok) throw new Error("Failed to cancel sequence");

@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { authFetch } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 import {
   CampaignAnalytics,
   ContactEventsResponse,
   MessageEventsResponse,
 } from "@/lib/types";
-
-const DELIVERY_API_URL = process.env.NEXT_PUBLIC_DELIVERY_API_URL || "http://localhost:8004";
 
 export function useCampaignAnalytics(campaignId: string) {
   const [analytics, setAnalytics] = useState<CampaignAnalytics | null>(null);
@@ -23,7 +22,7 @@ export function useCampaignAnalytics(campaignId: string) {
       setError(null);
 
       const res = await authFetch(
-        `${DELIVERY_API_URL}/api/analytics/campaign/${campaignId}`
+        `${API_URL}/api/analytics/campaign/${campaignId}`
       );
 
       if (res.status === 404) {
@@ -67,7 +66,7 @@ export function useContactEvents(contactId: string) {
       setError(null);
 
       const res = await authFetch(
-        `${DELIVERY_API_URL}/api/events/contact/${contactId}`
+        `${API_URL}/api/events/contact/${contactId}`
       );
 
       if (res.status === 404) {
@@ -110,7 +109,7 @@ export function useMessageEvents(messageId: string) {
       setError(null);
 
       const res = await authFetch(
-        `${DELIVERY_API_URL}/api/events/message/${messageId}`
+        `${API_URL}/api/events/message/${messageId}`
       );
 
       if (res.status === 404) {
