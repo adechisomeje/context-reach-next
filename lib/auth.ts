@@ -9,6 +9,10 @@ export interface User {
   is_active: boolean;
   created_at: string;
   credits: number;
+  // Onboarding status
+  onboarding_completed: boolean;
+  has_signature: boolean;
+  gmail_connected: boolean;
 }
 
 export interface CreditBalance {

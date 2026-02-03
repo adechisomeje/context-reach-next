@@ -36,12 +36,13 @@ export default function AuthCallbackPage() {
         refreshUser()
           .then(() => {
             console.log("User refreshed, redirecting...");
-            router.push(isNewUser ? "/discover" : "/");
+            // New users go to onboarding, existing users go to dashboard
+            router.push(isNewUser ? "/onboarding" : "/");
           })
           .catch((err) => {
             console.error("Refresh failed:", err);
             // Token is stored, redirect anyway
-            router.push(isNewUser ? "/discover" : "/");
+            router.push(isNewUser ? "/onboarding" : "/");
           });
       }, 100);
     } else {

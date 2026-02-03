@@ -33,7 +33,7 @@ export default function SignupPage() {
         company_name: companyName || undefined,
       });
       await refreshUser();
-      router.push("/");
+      router.push("/onboarding");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed");
     } finally {
