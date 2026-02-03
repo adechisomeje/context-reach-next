@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { authFetch } from "@/lib/auth";
-import { API_URL } from "@/lib/config";
+import { API_URL, DELIVERY_URL } from "@/lib/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,9 +57,9 @@ const Icons = {
 
 // Default signature template
 const DEFAULT_SIGNATURE_HTML = `<p>Best regards,</p>
-<p><strong>{{name}}</strong></p>
-<p>{{title}}</p>
-<p>{{company}}</p>`;
+<p><strong>Your Name</strong></p>
+<p>Your Title</p>
+<p>Your Company</p>`;
 
 interface OnboardingStep {
   id: number;
@@ -78,13 +78,53 @@ export default function OnboardingPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // Signature form state
-  const [signatureName, setSignatureName] = useState("");
-  const [signatureTitle, setSignatureTitle] = useState("");
-  const [signatureCompany, setSignatureCompany] = useState("");
+  const [signatureName, setSignatureName] = useState("Default Signature");
   const [signatureHtml, setSignatureHtml] = useState(DEFAULT_SIGNATURE_HTML);
   
   // Gmail connection state
   const [gmailConnecting, setGmailConnecting] = useState(false);
+
+  // Check for callback params from Gmail OAuth
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const gmailConnected = params.get("gmail_connected");
+    const gmailError = params.get("gmail_error");
+    
+    if (gmailConnected === "true") {
+      setSuccessMessage("Gmail connected successfully!");
+      // Clear the URL params
+      window.history.replaceState({}, "", "/onboarding");
+      // Refresh user to get updated status, then complete onboarding
+      refreshUser().then(() => {
+        // Auto-complete onboarding after Gmail is connected
+        completeOnboarding();
+      });
+    }
+    
+    if (gmailError) {
+      setError(decodeURIComponent(gmailError));
+      window.history.replaceState({}, "", "/onboarding");
+    }
+  }, []);
+  
+  // Function to complete onboarding
+  const completeOnboarding = async () => {
+    try {
+      const response = await authFetch(`${API_URL}/api/settings/onboarding/complete`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        console.error("Failed to complete onboarding");
+        return;
+      }
+
+      await refreshUser();
+      router.push("/dashboard");
+    } catch (err) {
+      console.error("Error completing onboarding:", err);
+    }
+  };
 
   // Redirect if already completed onboarding
   useEffect(() => {
@@ -102,24 +142,17 @@ export default function OnboardingPage() {
         setCurrentStep(1);
       }
       
-      // Pre-fill signature form with user data
-      if (user.first_name && user.last_name) {
-        setSignatureName(`${user.first_name} ${user.last_name}`);
-      }
-      if (user.company_name) {
-        setSignatureCompany(user.company_name);
+      // Pre-fill signature HTML with user data
+      if (user.first_name || user.last_name || user.company_name) {
+        const name = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Your Name";
+        const company = user.company_name || "Your Company";
+        setSignatureHtml(`<p>Best regards,</p>
+<p><strong>${name}</strong></p>
+<p>Your Title</p>
+<p>${company}</p>`);
       }
     }
   }, [user]);
-
-  // Update signature HTML when form fields change
-  useEffect(() => {
-    const html = `<p>Best regards,</p>
-<p><strong>${signatureName || "Your Name"}</strong></p>
-${signatureTitle ? `<p>${signatureTitle}</p>` : ""}
-${signatureCompany ? `<p>${signatureCompany}</p>` : ""}`;
-    setSignatureHtml(html);
-  }, [signatureName, signatureTitle, signatureCompany]);
 
   const steps: OnboardingStep[] = [
     {
@@ -138,7 +171,11 @@ ${signatureCompany ? `<p>${signatureCompany}</p>` : ""}`;
 
   const handleCreateSignature = async () => {
     if (!signatureName.trim()) {
-      setError("Please enter your name");
+      setError("Please enter a signature name");
+      return;
+    }
+    if (!signatureHtml.trim()) {
+      setError("Please enter your signature HTML content");
       return;
     }
 
@@ -146,11 +183,11 @@ ${signatureCompany ? `<p>${signatureCompany}</p>` : ""}`;
     setError(null);
 
     try {
-      const response = await authFetch(`${API_URL}/api/signatures`, {
+      const response = await authFetch(`${API_URL}/api/settings/signatures`, {
         method: "POST",
         body: JSON.stringify({
-          name: "Default Signature",
-          signature_html: signatureHtml,
+          name: signatureName,
+          html_content: signatureHtml,
           is_default: true,
         }),
       });
@@ -185,7 +222,7 @@ ${signatureCompany ? `<p>${signatureCompany}</p>` : ""}`;
     setError(null);
 
     try {
-      const response = await authFetch(`${API_URL}/api/oauth/google/auth-url?user_id=${user.id}&redirect_uri=${encodeURIComponent(window.location.origin + "/onboarding/gmail/callback")}`);
+      const response = await authFetch(`${DELIVERY_URL}/api/oauth/google/auth-url?user_id=${user.id}`);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -202,18 +239,9 @@ ${signatureCompany ? `<p>${signatureCompany}</p>` : ""}`;
 
   const handleCompleteOnboarding = async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      // Mark onboarding as complete
-      const response = await authFetch(`${API_URL}/api/users/complete-onboarding`, {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to complete onboarding");
-      }
-
-      await refreshUser();
-      router.push("/dashboard");
+      await completeOnboarding();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to complete onboarding");
     } finally {
@@ -313,51 +341,48 @@ ${signatureCompany ? `<p>${signatureCompany}</p>` : ""}`;
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input
-                      id="name"
-                      value={signatureName}
-                      onChange={(e) => setSignatureName(e.target.value)}
-                      placeholder="John Doe"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Job Title</Label>
-                    <Input
-                      id="title"
-                      value={signatureTitle}
-                      onChange={(e) => setSignatureTitle(e.target.value)}
-                      placeholder="Sales Manager"
-                    />
-                  </div>
-                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
+                  <Label htmlFor="signatureName">Signature Name *</Label>
                   <Input
-                    id="company"
-                    value={signatureCompany}
-                    onChange={(e) => setSignatureCompany(e.target.value)}
-                    placeholder="Acme Inc."
+                    id="signatureName"
+                    value={signatureName}
+                    onChange={(e) => setSignatureName(e.target.value)}
+                    placeholder="e.g., Work Signature"
                   />
                 </div>
 
-                {/* Signature Preview */}
-                <div className="space-y-2">
-                  <Label>Preview</Label>
-                  <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <div
-                      className="text-sm text-slate-700 dark:text-slate-300"
-                      dangerouslySetInnerHTML={{ __html: signatureHtml }}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="html_content">HTML Content *</Label>
+                    <textarea
+                      id="html_content"
+                      placeholder="<p>Best regards,</p>&#10;<p><strong>Your Name</strong></p>"
+                      value={signatureHtml}
+                      onChange={(e) => setSignatureHtml(e.target.value)}
+                      className="w-full h-48 px-3 py-2 rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 text-sm font-mono resize-y"
+                      required
                     />
+                    <p className="text-xs text-slate-500">
+                      Use HTML tags like &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;br&gt;, &lt;a&gt; to format your signature
+                    </p>
+                  </div>
+
+                  {/* Live Preview */}
+                  <div className="space-y-2">
+                    <Label>Preview</Label>
+                    <div className="h-48 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 overflow-auto">
+                      <div
+                        className="text-sm text-slate-700 dark:text-slate-300"
+                        dangerouslySetInnerHTML={{ __html: signatureHtml }}
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <div className="pt-4">
                   <Button
                     onClick={handleCreateSignature}
-                    disabled={isLoading || !signatureName.trim()}
+                    disabled={isLoading || !signatureName.trim() || !signatureHtml.trim()}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-base"
                   >
                     {isLoading ? (

@@ -1,44 +1,78 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function GmailCallbackPage() {
   const router = useRouter();
+  const { user, refreshUser } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
+  const hasProcessed = useRef(false);
+  
+  // Store the initial onboarding state before any refresh
+  const wasInOnboarding = useRef<boolean | null>(null);
 
   useEffect(() => {
+    // Capture onboarding state on first render
+    if (wasInOnboarding.current === null && user) {
+      wasInOnboarding.current = !user.onboarding_completed;
+    }
+  }, [user]);
+
+  useEffect(() => {
+    // Prevent double processing
+    if (hasProcessed.current) return;
+    
     const params = new URLSearchParams(window.location.search);
     const connected = params.get("connected");
     const email = params.get("email");
     const error = params.get("error");
 
     if (error) {
+      hasProcessed.current = true;
       setStatus("error");
       setMessage(decodeURIComponent(error));
-      // Redirect to settings after showing error
+      // Redirect after showing error
       setTimeout(() => {
-        router.push(`/settings?gmail_error=${encodeURIComponent(error)}`);
+        if (wasInOnboarding.current) {
+          router.push(`/onboarding?gmail_error=${encodeURIComponent(error)}`);
+        } else {
+          router.push(`/settings?gmail_error=${encodeURIComponent(error)}`);
+        }
       }, 2000);
       return;
     }
 
     if (connected === "true") {
+      hasProcessed.current = true;
       setStatus("success");
       setMessage(email ? `Connected as ${email}` : "Gmail connected successfully!");
-      // Redirect to settings
-      setTimeout(() => {
-        router.push("/settings?gmail_connected=true");
-      }, 1500);
-    } else {
+      // Refresh user and redirect
+      refreshUser().then(() => {
+        setTimeout(() => {
+          // Redirect based on where user came from
+          if (wasInOnboarding.current) {
+            router.push("/onboarding?gmail_connected=true");
+          } else {
+            router.push("/settings?gmail_connected=true");
+          }
+        }, 1500);
+      });
+    } else if (!connected && !error) {
+      hasProcessed.current = true;
       setStatus("error");
       setMessage("Connection was not completed");
       setTimeout(() => {
-        router.push("/settings");
+        if (wasInOnboarding.current) {
+          router.push("/onboarding");
+        } else {
+          router.push("/settings");
+        }
       }, 2000);
     }
-  }, [router]);
+  }, [router, user, refreshUser]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6">
@@ -75,7 +109,7 @@ export default function GmailCallbackPage() {
                 {message}
               </p>
               <p className="text-sm text-slate-500 mt-4">
-                Redirecting to settings...
+                Redirecting...
               </p>
             </>
           )}
@@ -94,7 +128,7 @@ export default function GmailCallbackPage() {
                 {message}
               </p>
               <p className="text-sm text-slate-500 mt-4">
-                Redirecting to settings...
+                Redirecting...
               </p>
             </>
           )}

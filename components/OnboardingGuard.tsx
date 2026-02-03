@@ -6,7 +6,6 @@ import { useAuth } from "@/components/AuthProvider";
 
 // Pages that don't require onboarding check (public pages)
 const PUBLIC_PATHS = [
-  "/",
   "/signin",
   "/login", // Keep for backwards compatibility
   "/signup",
@@ -36,8 +35,20 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
     // Don't redirect while loading
     if (isLoading) return;
 
-    // Don't check for public paths
-    if (PUBLIC_PATHS.some(path => pathname.startsWith(path))) return;
+    // Debug logging
+    if (user) {
+      console.log("OnboardingGuard - User:", {
+        email: user.email,
+        onboarding_completed: user.onboarding_completed,
+        has_signature: user.has_signature,
+        gmail_connected: user.gmail_connected,
+        pathname,
+      });
+    }
+
+    // Don't check for public paths (exact match for most, startsWith for paths with sub-routes)
+    const isPublicPath = pathname === "/" || PUBLIC_PATHS.some(path => pathname.startsWith(path));
+    if (isPublicPath) return;
 
     // Don't redirect if not authenticated (let AuthProvider handle that)
     if (!isAuthenticated || !user) return;
