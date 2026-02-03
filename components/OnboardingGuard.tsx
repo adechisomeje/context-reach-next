@@ -4,13 +4,17 @@ import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 
-// Pages that don't require onboarding check
+// Pages that don't require onboarding check (public pages)
 const PUBLIC_PATHS = [
-  "/login",
+  "/",
+  "/signin",
+  "/login", // Keep for backwards compatibility
   "/signup",
   "/auth/callback",
   "/onboarding",
   "/onboarding/gmail/callback",
+  "/privacy",
+  "/terms",
 ];
 
 // Pages that should skip onboarding check (settings allows completing onboarding)

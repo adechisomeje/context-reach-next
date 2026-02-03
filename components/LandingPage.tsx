@@ -18,7 +18,7 @@ export function LandingPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login">
+            <Link href="/signin">
               <Button variant="ghost">Log in</Button>
             </Link>
             <Link href="/signup">
@@ -55,7 +55,7 @@ export function LandingPage() {
                 Start Free Discovery
               </Button>
             </Link>
-            <Link href="/login">
+            <Link href="/signin">
               <Button size="lg" variant="outline" className="px-8 py-6 text-lg">
                 Sign In
               </Button>
@@ -181,9 +181,34 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-slate-200 dark:border-slate-800">
-        <div className="max-w-6xl mx-auto px-6 text-center text-sm text-slate-500">
-          © 2026 ContextReach. AI-powered prospect discovery.
+      <footer className="py-12 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 dark:bg-white">
+                <span className="text-sm font-bold text-white dark:text-slate-900">CR</span>
+              </div>
+              <span className="text-lg font-semibold text-slate-900 dark:text-white">
+                ContextReach
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-8 text-sm">
+              <Link href="/privacy" className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+                Terms of Use
+              </Link>
+              <Link href="/signin" className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+                Sign In
+              </Link>
+            </div>
+          </div>
+          
+          <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800 text-center text-sm text-slate-500">
+            © 2026 ContextReach. AI-powered prospect discovery. All rights reserved.
+          </div>
         </div>
       </footer>
     </div>

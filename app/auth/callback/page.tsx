@@ -21,8 +21,8 @@ export default function AuthCallbackPage() {
     console.log("Auth callback - token:", token ? "present" : "missing", "error:", error);
 
     if (error) {
-      // Handle error - redirect to login with error message
-      router.push(`/login?error=${encodeURIComponent(error)}`);
+      // Handle error - redirect to signin with error message
+      router.push(`/signin?error=${encodeURIComponent(error)}`);
       return;
     }
 
@@ -37,20 +37,20 @@ export default function AuthCallbackPage() {
           .then(() => {
             console.log("User refreshed, redirecting...");
             // New users go to onboarding, existing users go to dashboard
-            router.push(isNewUser ? "/onboarding" : "/");
+            router.push(isNewUser ? "/onboarding" : "/dashboard");
           })
           .catch((err) => {
             console.error("Refresh failed:", err);
             // Token is stored, redirect anyway
-            router.push(isNewUser ? "/onboarding" : "/");
+            router.push(isNewUser ? "/onboarding" : "/dashboard");
           });
       }, 100);
     } else {
-      // No token received - redirect to login
+      // No token received - redirect to signin
       setStatus("error");
       setErrorMessage("No authentication token received");
       setTimeout(() => {
-        router.push("/login");
+        router.push("/signin");
       }, 2000);
     }
   }, [router, refreshUser]);

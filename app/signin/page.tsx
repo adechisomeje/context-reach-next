@@ -1,23 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signup } from "@/lib/auth";
+import { login } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
 import { API_URL } from "@/lib/config";
 
-export default function SignupPage() {
+export default function SignInPage() {
   const router = useRouter();
   const { refreshUser } = useAuth();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [companyName, setCompanyName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  // Check for error from OAuth callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errorParam = params.get("error");
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+      // Clean up URL
+      window.history.replaceState({}, "", "/signin");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,23 +33,17 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      await signup({
-        email,
-        password,
-        first_name: firstName,
-        last_name: lastName,
-        company_name: companyName || undefined,
-      });
+      await login({ email, password });
       await refreshUser();
-      router.push("/onboarding");
+      router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed");
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleSignUp = async () => {
+  const handleGoogleSignIn = async () => {
     setError(null);
     setIsGoogleLoading(true);
 
@@ -54,7 +56,7 @@ export default function SignupPage() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Google auth URL error:", response.status, errorText);
-        throw new Error(`Failed to get Google sign-up URL (${response.status})`);
+        throw new Error(`Failed to get Google sign-in URL (${response.status})`);
       }
       
       const data = await response.json();
@@ -65,8 +67,8 @@ export default function SignupPage() {
       
       window.location.href = data.auth_url;
     } catch (err) {
-      console.error("Google sign-up error:", err);
-      setError(err instanceof Error ? err.message : "Google sign-up failed");
+      console.error("Google sign-in error:", err);
+      setError(err instanceof Error ? err.message : "Google sign-in failed");
       setIsGoogleLoading(false);
     }
   };
@@ -78,45 +80,16 @@ export default function SignupPage() {
         <div className="glass-card">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-purple-500 mb-4 shadow-lg shadow-pink-500/25">
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 mb-4 shadow-lg shadow-purple-500/25">
               <span className="text-xl font-bold text-white">CR</span>
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-clip-text text-transparent">
-              Create an account
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 bg-clip-text text-transparent">
+              Welcome back
             </h1>
-            <p className="text-muted-foreground mt-1">Get started with ContextReach</p>
+            <p className="text-muted-foreground mt-1">Sign in to your account</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium mb-2">
-                  First name
-                </label>
-                <input
-                  id="firstName"
-                  placeholder="John"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="glass-input"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium mb-2">
-                  Last name
-                </label>
-                <input
-                  id="lastName"
-                  placeholder="Doe"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="glass-input"
-                  required
-                />
-              </div>
-            </div>
-
             <div>
               <label htmlFor="email" className="block text-sm font-medium mb-2">
                 Email
@@ -131,7 +104,7 @@ export default function SignupPage() {
                 required
               />
             </div>
-
+            
             <div>
               <label htmlFor="password" className="block text-sm font-medium mb-2">
                 Password
@@ -144,20 +117,6 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="glass-input"
                 required
-                minLength={6}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="companyName" className="block text-sm font-medium mb-2">
-                Company <span className="text-muted-foreground font-normal">(optional)</span>
-              </label>
-              <input
-                id="companyName"
-                placeholder="Acme Inc"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                className="glass-input"
               />
             </div>
 
@@ -175,10 +134,10 @@ export default function SignupPage() {
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className="spinner" />
-                  Creating account...
+                  Signing in...
                 </span>
               ) : (
-                "Create account"
+                "Sign in"
               )}
             </button>
           </form>
@@ -193,10 +152,10 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {/* Google Sign-Up Button */}
+          {/* Google Sign-In Button */}
           <button
             type="button"
-            onClick={handleGoogleSignUp}
+            onClick={handleGoogleSignIn}
             disabled={isLoading || isGoogleLoading}
             className="w-full h-11 flex items-center justify-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -219,9 +178,9 @@ export default function SignupPage() {
           </button>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link href="/signin" className="text-purple-600 dark:text-purple-400 font-medium hover:underline">
-              Sign in
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="text-purple-600 dark:text-purple-400 font-medium hover:underline">
+              Sign up
             </Link>
           </p>
         </div>

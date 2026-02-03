@@ -8,7 +8,7 @@ import { useAuth } from "@/components/AuthProvider";
 const navItems = [
 	{
 		label: "Dashboard",
-		href: "/",
+		href: "/dashboard",
 		icon: (
 			<svg
 				className="w-5 h-5"
@@ -127,7 +127,7 @@ export function Sidebar() {
 		<aside className="fixed left-0 top-0 z-40 h-screen w-60 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 flex flex-col">
 			{/* Logo */}
 			<div className="flex h-14 items-center px-4 border-b border-slate-200 dark:border-slate-800">
-				<Link href="/" className="flex items-center gap-2">
+				<Link href="/dashboard" className="flex items-center gap-2">
 					<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 dark:bg-white">
 						<span className="text-xs font-bold text-white dark:text-slate-900">
 							CR
@@ -144,7 +144,7 @@ export function Sidebar() {
 				{navItems.map((item) => {
 					const isActive =
 						pathname === item.href ||
-						(item.href !== "/" && pathname.startsWith(item.href));
+						(item.href !== "/dashboard" && pathname.startsWith(item.href));
 					return (
 						<Link
 							key={item.href}

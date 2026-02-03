@@ -89,7 +89,7 @@ export default function OnboardingPage() {
   // Redirect if already completed onboarding
   useEffect(() => {
     if (!authLoading && user?.onboarding_completed) {
-      router.push("/discover");
+      router.push("/dashboard");
     }
   }, [user, authLoading, router]);
 
@@ -213,7 +213,7 @@ ${signatureCompany ? `<p>${signatureCompany}</p>` : ""}`;
       }
 
       await refreshUser();
-      router.push("/discover");
+      router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to complete onboarding");
     } finally {
@@ -230,7 +230,7 @@ ${signatureCompany ? `<p>${signatureCompany}</p>` : ""}`;
   }
 
   if (!user) {
-    router.push("/login");
+    router.push("/signin");
     return null;
   }
 
@@ -478,7 +478,7 @@ ${signatureCompany ? `<p>${signatureCompany}</p>` : ""}`;
         {/* Skip for now (optional) */}
         <div className="text-center mt-8">
           <button
-            onClick={() => router.push("/discover")}
+            onClick={() => router.push("/dashboard")}
             className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline"
           >
             Skip for now (you can complete this later in Settings)

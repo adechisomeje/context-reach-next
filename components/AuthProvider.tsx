@@ -14,7 +14,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const PUBLIC_ROUTES = ["/login", "/signup", "/auth/callback"];
+// Public routes that don't require authentication
+const PUBLIC_ROUTES = ["/", "/signin", "/login", "/signup", "/auth/callback", "/privacy", "/terms"];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     authLogout();
     setUser(null);
-    router.push("/login");
+    router.push("/signin");
   };
 
   useEffect(() => {
@@ -54,15 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoading) {
-      const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || pathname === "/auth/callback";
-      const isAuthRoute = pathname === "/login" || pathname === "/signup";
+      const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || pathname.startsWith("/auth/");
+      const isAuthRoute = pathname === "/signin" || pathname === "/login" || pathname === "/signup";
       
       if (!user && !isPublicRoute) {
         // Not logged in and trying to access protected route
-        router.push("/login");
+        router.push("/signin");
       } else if (user && isAuthRoute) {
         // Logged in and trying to access login/signup - redirect to dashboard
-        router.push("/");
+        router.push("/dashboard");
       }
     }
   }, [user, isLoading, pathname, router]);

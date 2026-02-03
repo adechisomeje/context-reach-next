@@ -5,18 +5,18 @@ import { useAuth } from "@/components/AuthProvider";
 import { Sidebar } from "@/components/Sidebar";
 
 // Routes that don't need the sidebar and are accessible without auth
-const PUBLIC_ROUTES = ["/login", "/signup", "/auth/callback"];
+const PUBLIC_ROUTES = ["/", "/signin", "/login", "/signup", "/auth/callback", "/privacy", "/terms"];
 
 // Routes that need auth but shouldn't show sidebar
-const CALLBACK_ROUTES = ["/settings/gmail/callback"];
+const CALLBACK_ROUTES = ["/settings/gmail/callback", "/onboarding", "/onboarding/gmail/callback"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const pathname = usePathname();
 
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || pathname.startsWith("/auth/");
-  const isCallbackRoute = CALLBACK_ROUTES.includes(pathname);
-  const isHomePage = pathname === "/";
+  const isCallbackRoute = CALLBACK_ROUTES.some(route => pathname.startsWith(route));
+  const isLandingPage = pathname === "/";
 
   // Show loading state (but not for public routes - let them render immediately)
   if (isLoading && !isPublicRoute) {
@@ -27,17 +27,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Public routes (login/signup/callback) - no sidebar, render immediately
+  // Public routes (landing/login/signup/callback/privacy/terms) - no sidebar, render immediately
   if (isPublicRoute) {
     return <>{children}</>;
   }
 
-  // Home page for unauthenticated users - show landing page without sidebar
-  if (isHomePage && !isAuthenticated) {
+  // Landing page for unauthenticated users - show landing page without sidebar
+  if (isLandingPage && !isAuthenticated) {
     return <>{children}</>;
   }
 
-  // Authenticated users on callback routes - no sidebar
+  // Authenticated users on callback/onboarding routes - no sidebar
   if (isAuthenticated && isCallbackRoute) {
     return <>{children}</>;
   }
