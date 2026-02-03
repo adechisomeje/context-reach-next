@@ -538,7 +538,7 @@ export default function OnboardingPage() {
         {/* Skip for now (optional) */}
         <div className="text-center mt-8">
           <button
-            onClick={() => router.push("/dashboard")}
+            onClick={handleSkipOnboarding}
             className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline"
           >
             Skip for now (you can complete this later in Settings)
