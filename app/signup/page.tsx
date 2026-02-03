@@ -72,32 +72,54 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-
-      <div className="relative w-full max-w-md">
-        <div className="glass-card">
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-purple-500 mb-4 shadow-lg shadow-pink-500/25">
-              <span className="text-xl font-bold text-white">CR</span>
+    <div className="min-h-screen bg-background">
+      {/* Navbar */}
+      <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 dark:bg-white">
+              <span className="text-sm font-bold text-white dark:text-slate-900">CR</span>
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-clip-text text-transparent">
-              Create an account
-            </h1>
-            <p className="text-muted-foreground mt-1">Get started with ContextReach</p>
+            <span className="text-xl font-semibold text-slate-900 dark:text-white">
+              ContextReach
+            </span>
+          </Link>
+          <div className="flex items-center gap-3">
+            <Link 
+              href="/signin" 
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+            >
+              Sign in
+            </Link>
           </div>
+        </div>
+      </header>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium mb-2">
-                  First name
-                </label>
-                <input
-                  id="firstName"
-                  placeholder="John"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+      <div className="flex items-center justify-center p-6 min-h-[calc(100vh-64px)]">
+        <div className="relative w-full max-w-md">
+          <div className="glass-card">
+            {/* Logo */}
+            <div className="text-center mb-8">
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-purple-500 mb-4 shadow-lg shadow-pink-500/25">
+                <span className="text-xl font-bold text-white">CR</span>
+              </div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                Create an account
+              </h1>
+              <p className="text-muted-foreground mt-1">Get started with ContextReach</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium mb-2">
+                    First name
+                  </label>
+                  <input
+                    id="firstName"
+                    placeholder="John"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
                   className="glass-input"
                   required
                 />
@@ -224,6 +246,7 @@ export default function SignupPage() {
               Sign in
             </Link>
           </p>
+          </div>
         </div>
       </div>
     </div>
