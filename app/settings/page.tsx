@@ -17,6 +17,7 @@ import { EmailSignature, CreateSignatureRequest, Organization, OrgMember, OrgInv
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
 import { API_URL, DELIVERY_URL } from "@/lib/config";
+import { useAppTour } from "@/components/AppTour";
 
 // Default HTML signature template
 const DEFAULT_SIGNATURE_HTML = `<p>Best regards,</p>
@@ -33,6 +34,7 @@ interface GmailStatus {
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const { startTour } = useAppTour();
   const [signatures, setSignatures] = useState<EmailSignature[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1623,6 +1625,39 @@ export default function SettingsPage() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Help & Support Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 flex items-center justify-center">
+                <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <CardTitle>Help & Support</CardTitle>
+                <CardDescription>
+                  Get help and learn how to use ContextReach
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                onClick={startTour}
+                className="flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Restart App Tour
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

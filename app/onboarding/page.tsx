@@ -120,7 +120,8 @@ export default function OnboardingPage() {
       }
 
       await refreshUser();
-      router.push("/dashboard");
+      // Redirect to dashboard with tour parameter to start the app tour
+      router.push("/dashboard?tour=true");
     } catch (err) {
       console.error("Error completing onboarding:", err);
     }

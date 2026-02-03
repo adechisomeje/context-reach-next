@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { AppShell } from "@/components/AppShell";
 import { OnboardingGuard } from "@/components/OnboardingGuard";
+import { AppTour } from "@/components/AppTour";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
         <AuthProvider>
           <OnboardingGuard>
             <AppShell>{children}</AppShell>
+            <AppTour />
           </OnboardingGuard>
         </AuthProvider>
       </body>
