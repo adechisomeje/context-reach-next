@@ -40,6 +40,7 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
       console.log("OnboardingGuard - User:", {
         email: user.email,
         onboarding_completed: user.onboarding_completed,
+        onboarding_skipped: user.onboarding_skipped,
         has_signature: user.has_signature,
         gmail_connected: user.gmail_connected,
         pathname,
@@ -56,8 +57,8 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
     // Allow access to settings even if onboarding not complete
     if (SKIP_ONBOARDING_PATHS.some(path => pathname.startsWith(path))) return;
 
-    // Redirect to onboarding if not completed
-    if (!user.onboarding_completed) {
+    // Redirect to onboarding if not completed AND not skipped
+    if (!user.onboarding_completed && !user.onboarding_skipped) {
       router.push("/onboarding");
     }
   }, [isLoading, isAuthenticated, user, pathname, router]);

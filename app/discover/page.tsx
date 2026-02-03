@@ -17,6 +17,7 @@ import { useOrchestration, usePipelineStatus } from "@/hooks/useOrchestration";
 import { PipelineProgress } from "@/components/PipelineProgress";
 import { DurationConfigForm } from "@/components/campaign";
 import { WebsiteAnalyzer } from "@/components/WebsiteAnalyzer";
+import { OnboardingPromptModal, useOnboardingCheck } from "@/components/OnboardingPrompt";
 
 const POLL_INTERVAL = 2000;
 
@@ -73,6 +74,9 @@ export default function DiscoverPage() {
   const [orchestrationId, setOrchestrationId] = useState<string | null>(null);
   const { startAutoMode, isStarting, error: orchestrationError } = useOrchestration();
   const { status: pipelineStatus } = usePipelineStatus(orchestrationId);
+
+  // Onboarding check
+  const { showPrompt: showOnboardingPrompt, checkOnboarding, closePrompt: closeOnboardingPrompt } = useOnboardingCheck();
 
   // Sync orchestration errors to local error state
   useEffect(() => {
@@ -295,6 +299,11 @@ export default function DiscoverPage() {
   };
 
   const handleSubmit = () => {
+    // Check onboarding before allowing submission
+    if (!checkOnboarding()) {
+      return;
+    }
+
     if (mode === "auto") {
       handleAutoSubmit();
     } else {
@@ -333,22 +342,28 @@ export default function DiscoverPage() {
   // Form Step
   if (step === "form") {
     return (
-      <div className="h-screen flex flex-col bg-white dark:bg-slate-950">
-        {/* Page Header */}
-        <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-800">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-semibold text-slate-900 dark:text-white">New Discovery</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Find leads matching your ideal customer profile
-                </p>
-              </div>
-              <Link href="/campaigns">
-                <button className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
-                  Cancel
-                </button>
-              </Link>
+      <>
+        {/* Onboarding Prompt Modal */}
+        {showOnboardingPrompt && (
+          <OnboardingPromptModal onClose={closeOnboardingPrompt} />
+        )}
+
+        <div className="h-screen flex flex-col bg-white dark:bg-slate-950">
+          {/* Page Header */}
+          <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-800">
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-xl font-semibold text-slate-900 dark:text-white">New Discovery</h1>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Find leads matching your ideal customer profile
+                  </p>
+                </div>
+                <Link href="/campaigns">
+                  <button className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
+                    Cancel
+                  </button>
+                </Link>
             </div>
           </div>
         </div>
@@ -860,6 +875,7 @@ export default function DiscoverPage() {
           </div>
         </div>
       </div>
+      </>
     );
   }
 

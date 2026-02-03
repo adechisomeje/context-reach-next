@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { setToken } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
@@ -10,8 +10,12 @@ export default function AuthCallbackPage() {
   const { refreshUser } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
+    // Prevent double processing
+    if (hasProcessed.current) return;
+
     // Use window.location.search to get params immediately
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
@@ -20,9 +24,17 @@ export default function AuthCallbackPage() {
 
     console.log("Auth callback - token:", token ? "present" : "missing", "error:", error);
 
+    // If no token and no error in URL, don't process (might be a re-render)
+    if (!token && !error) {
+      return;
+    }
+
+    // Mark as processed immediately
+    hasProcessed.current = true;
+
     if (error) {
       // Handle error - redirect to signin with error message
-      router.push(`/signin?error=${encodeURIComponent(error)}`);
+      router.replace(`/signin?error=${encodeURIComponent(error)}`);
       return;
     }
 
@@ -31,18 +43,21 @@ export default function AuthCallbackPage() {
       setToken(token);
       setStatus("success");
 
+      // Clear URL params to prevent re-processing
+      window.history.replaceState({}, "", "/auth/callback");
+
       // Small delay to ensure token is stored, then refresh and redirect
       setTimeout(() => {
         refreshUser()
           .then(() => {
             console.log("User refreshed, redirecting...");
             // New users go to onboarding, existing users go to dashboard
-            router.push(isNewUser ? "/onboarding" : "/dashboard");
+            router.replace(isNewUser ? "/onboarding" : "/dashboard");
           })
           .catch((err) => {
             console.error("Refresh failed:", err);
             // Token is stored, redirect anyway
-            router.push(isNewUser ? "/onboarding" : "/dashboard");
+            router.replace(isNewUser ? "/onboarding" : "/dashboard");
           });
       }, 100);
     } else {
@@ -50,10 +65,10 @@ export default function AuthCallbackPage() {
       setStatus("error");
       setErrorMessage("No authentication token received");
       setTimeout(() => {
-        router.push("/signin");
+        router.replace("/signin");
       }, 2000);
     }
-  }, [router, refreshUser]);
+  }, []); // Remove dependencies to run only once
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">

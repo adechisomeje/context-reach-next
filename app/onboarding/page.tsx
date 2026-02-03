@@ -127,6 +127,27 @@ export default function OnboardingPage() {
     }
   };
 
+  // Function to skip onboarding
+  const handleSkipOnboarding = async () => {
+    try {
+      const response = await authFetch(`${API_URL}/api/settings/onboarding/skip`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        console.error("Failed to skip onboarding");
+        // Still redirect even if API fails - we'll prompt them later
+      }
+
+      await refreshUser();
+      router.push("/dashboard?tour=true");
+    } catch (err) {
+      console.error("Error skipping onboarding:", err);
+      // Still redirect - we'll prompt them later
+      router.push("/dashboard");
+    }
+  };
+
   // Redirect if already completed onboarding
   useEffect(() => {
     if (!authLoading && user?.onboarding_completed) {
@@ -266,6 +287,19 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="container max-w-4xl mx-auto px-4 py-12">
+        {/* Skip Button */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={handleSkipOnboarding}
+            className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex items-center gap-1"
+          >
+            Skip for now
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">

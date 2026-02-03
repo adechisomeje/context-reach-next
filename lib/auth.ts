@@ -11,6 +11,7 @@ export interface User {
   credits: number;
   // Onboarding status
   onboarding_completed: boolean;
+  onboarding_skipped: boolean;
   has_signature: boolean;
   gmail_connected: boolean;
 }
