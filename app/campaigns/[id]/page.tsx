@@ -89,31 +89,18 @@ export default function CampaignDetailPage() {
       setContacts(contactsData.contacts);
       setTotalContacts(contactsData.total);
 
-      try {
-        const messagesResponse = await authFetch(
-          API_URL + "/api/messages?campaign_id=" + campaignId
-        );
-        if (messagesResponse.ok) {
-          const messagesData: MessagesResponse = await messagesResponse.json();
-          const messagesByContact: Record<string, Message[]> = {};
-          messagesData.messages.forEach((msg) => {
-            if (!messagesByContact[msg.contact_id]) {
-              messagesByContact[msg.contact_id] = [];
-            }
-            messagesByContact[msg.contact_id].push(msg);
-          });
-          setContactMessages(messagesByContact);
-        }
-      } catch (msgErr) {
-        console.warn("Could not fetch messages:", msgErr);
-      }
+      // Use the actual campaign.id for sequence lookups (not the URL param which might be discovery_campaign_id)
+      const actualCampaignId = campaignData.id;
 
+      // Fetch sequence status for each contact from composition engine
       const sequenceStatuses: Record<string, { hasSequence: boolean; status?: string }> = {};
+      const messagesByContact: Record<string, Message[]> = {};
+      
       await Promise.all(
         contactsData.contacts.map(async (contact) => {
           try {
             const seqResponse = await authFetch(
-              `${API_URL}/api/sequence/${contact.id}?campaign_id=${campaignId}`
+              `${API_URL}/api/sequence/${contact.id}?campaign_id=${actualCampaignId}`
             );
             if (seqResponse.ok) {
               const seqData = await seqResponse.json();
@@ -122,15 +109,23 @@ export default function CampaignDetailPage() {
                 hasSequence: true,
                 status: isPaused ? "paused" : "active",
               };
+              // Store messages from sequence response
+              if (seqData.messages && seqData.messages.length > 0) {
+                messagesByContact[contact.id] = seqData.messages;
+              }
             } else if (seqResponse.status === 404) {
               sequenceStatuses[contact.id] = { hasSequence: false };
             }
           } catch (seqErr) {
+            console.warn(`Could not fetch sequence for contact ${contact.id}:`, seqErr);
             sequenceStatuses[contact.id] = { hasSequence: false };
           }
         })
       );
+      
+      console.log("Sequence statuses:", Object.values(sequenceStatuses).filter(s => s.hasSequence).length, "contacts have sequences");
       setContactSequences(sequenceStatuses);
+      setContactMessages(messagesByContact);
     } catch (err) {
       console.error("Failed to fetch campaign data:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch campaign data");
@@ -235,11 +230,20 @@ export default function CampaignDetailPage() {
   const getContactMessageStatus = (contactId: string): { status: string; count: number } | null => {
     const messages = contactMessages[contactId];
     if (!messages || messages.length === 0) return null;
+    
+    // Priority order: sent/delivered > scheduled > draft > failed/cancelled > any
+    const sent = messages.filter(m => m.status === "sent" || m.status === "delivered" || m.status === "replied").length;
     const scheduled = messages.filter(m => m.status === "scheduled").length;
-    const sent = messages.filter(m => m.status === "sent" || m.status === "delivered").length;
+    const draft = messages.filter(m => m.status === "draft").length;
+    const failed = messages.filter(m => m.status === "failed" || m.status === "cancelled" || m.status === "bounced").length;
+    
     if (sent > 0) return { status: "sent", count: sent };
     if (scheduled > 0) return { status: "scheduled", count: scheduled };
-    return null;
+    if (draft > 0) return { status: "draft", count: draft };
+    if (failed > 0) return { status: "failed", count: failed };
+    
+    // If messages exist but don't match above, return total count
+    return { status: "pending", count: messages.length };
   };
 
   const getInitials = (firstName: string | null, lastName: string | null) => {
@@ -596,9 +600,14 @@ export default function CampaignDetailPage() {
                                 Sent ({msgStatus.count})
                               </span>
                             )}
-                            {(msgStatus?.status === "scheduled" || (seqStatus?.hasSequence && msgStatus?.status !== "sent")) && (
+                            {(msgStatus?.status === "scheduled" || (seqStatus?.hasSequence && msgStatus?.status !== "sent" && msgStatus?.status !== "draft")) && (
                               <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                                 Scheduled
+                              </span>
+                            )}
+                            {msgStatus?.status === "draft" && (
+                              <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                                Composed
                               </span>
                             )}
                           </div>
@@ -621,7 +630,7 @@ export default function CampaignDetailPage() {
                                     Details
                                   </button>
                                 )}
-                                {!seqStatus?.hasSequence && !msgStatus && (
+                                {mode === "manual" && !seqStatus?.hasSequence && !msgStatus && (
                                   <button
                                     onClick={() => setComposingContact(contact)}
                                     className="px-2 py-1 text-xs font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
