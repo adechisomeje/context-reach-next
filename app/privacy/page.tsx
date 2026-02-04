@@ -123,7 +123,8 @@ export default function PrivacyPage() {
             <p className="text-slate-600 dark:text-slate-400 mb-4">
               All email data is encrypted at rest. We only store metadata (timestamps, recipient 
               addresses) necessary for campaign analytics. We do not store the content of emails 
-              in your inbox.
+              in your inbox. <strong>We only access email metadata (headers) to track outreach 
+              success and never read the content of your messages.</strong>
             </p>
 
             <h3 className="text-xl font-medium text-slate-800 dark:text-slate-200 mb-3">
