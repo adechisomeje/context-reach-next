@@ -76,13 +76,21 @@ export const authFetch = async (
   options: RequestInit = {}
 ): Promise<Response> => {
   const token = getToken();
+  
+  // Only add Content-Type: application/json if there's a body
+  const headers: HeadersInit = {
+    ...options.headers,
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+  
+  // Add Content-Type only if there's a body (for POST, PUT, PATCH with data)
+  if (options.body) {
+    (headers as Record<string, string>)["Content-Type"] = "application/json";
+  }
+  
   return fetch(url, {
     ...options,
-    headers: {
-      ...options.headers,
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
+    headers,
   });
 };
 
