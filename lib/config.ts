@@ -1,7 +1,9 @@
 // Centralized API URL configuration
 // Clean up the API URL - remove any trailing paths and ensure proper format
 const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
-const rawDeliveryUrl = process.env.NEXT_PUBLIC_DELIVERY_URL || "http://localhost:8004";
+// DELIVERY_URL defaults to API_URL in production, localhost:8004 in development
+const rawDeliveryUrl = process.env.NEXT_PUBLIC_DELIVERY_URL || 
+  (process.env.NODE_ENV === 'production' ? rawApiUrl : "http://localhost:8004");
 
 // Remove any trailing /api/... paths and trailing slashes
 export const API_URL = rawApiUrl.replace(/\/api\/.*$/, '').replace(/\/$/, '');
