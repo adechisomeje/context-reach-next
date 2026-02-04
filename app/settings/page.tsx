@@ -822,7 +822,7 @@ export default function SettingsPage() {
       <div className="max-w-4xl mx-auto">
         {/* Breadcrumb */}
         <div className="mb-6">
-          <Link href="/" className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+          <Link href="/dashboard" className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
             ← Back to Dashboard
           </Link>
         </div>
