@@ -78,6 +78,64 @@ export default function PrivacyPage() {
             </p>
           </section>
 
+          {/* Google API Services Disclosure - Required for Gmail Restricted Scope */}
+          <section className="mb-12 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-4">
+              Google API Services User Data Policy
+            </h2>
+            
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg mb-6 border border-blue-200 dark:border-blue-700">
+              <p className="text-slate-700 dark:text-slate-300 font-medium">
+                ContextReach AI&apos;s use and transfer to any other app of information received from 
+                Google APIs will adhere to{" "}
+                <a 
+                  href="https://developers.google.com/terms/api-services-user-data-policy" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 underline hover:text-blue-700"
+                >
+                  Google API Services User Data Policy
+                </a>
+                , including the Limited Use requirements.
+              </p>
+            </div>
+
+            <h3 className="text-xl font-medium text-slate-800 dark:text-slate-200 mb-3">
+              Data Collection via Google OAuth
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              We collect your email address and name via Google OAuth to create your account 
+              and identify your outreach campaigns.
+            </p>
+
+            <h3 className="text-xl font-medium text-slate-800 dark:text-slate-200 mb-3">
+              Gmail Data Usage
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              We use your Gmail access solely to send outreach emails you have drafted and to 
+              track replies to those emails. We do not use your data for advertising or sell 
+              it to third parties.
+            </p>
+
+            <h3 className="text-xl font-medium text-slate-800 dark:text-slate-200 mb-3">
+              Data Storage
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              All email data is encrypted at rest. We only store metadata (timestamps, recipient 
+              addresses) necessary for campaign analytics. We do not store the content of emails 
+              in your inbox.
+            </p>
+
+            <h3 className="text-xl font-medium text-slate-800 dark:text-slate-200 mb-3">
+              Human Access to Data
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              No human at ContextReach AI reads your emails unless you explicitly provide us 
+              with a specific email for troubleshooting support. Access to any user data is 
+              strictly limited and logged.
+            </p>
+          </section>
+
           <section className="mb-12">
             <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-4">
               3. How We Use Your Information
