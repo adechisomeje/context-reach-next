@@ -16,7 +16,7 @@ import {
 import { EmailSignature, CreateSignatureRequest, Organization, OrgMember, OrgInvite, OrgRole, OrgContactStats, PendingInvite } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
-import { API_URL, DELIVERY_URL } from "@/lib/config";
+import { API_URL } from "@/lib/config";
 import { useAppTour } from "@/components/AppTour";
 
 // Default HTML signature template
@@ -121,7 +121,7 @@ export default function SettingsPage() {
     
     setGmailLoading(true);
     try {
-      const response = await authFetch(`${DELIVERY_URL}/api/oauth/google/status?user_id=${user.id}`);
+      const response = await authFetch(`${API_URL}/api/oauth/google/status?user_id=${user.id}`);
       if (response.ok) {
         const data = await response.json();
         setGmailStatus(data);
@@ -174,7 +174,7 @@ export default function SettingsPage() {
     
     setGmailConnecting(true);
     try {
-      const response = await authFetch(`${DELIVERY_URL}/api/oauth/google/auth-url?user_id=${user.id}`);
+      const response = await authFetch(`${API_URL}/api/oauth/google/auth-url?user_id=${user.id}`);
       if (response.ok) {
         const data = await response.json();
         window.location.href = data.auth_url;
@@ -200,7 +200,7 @@ export default function SettingsPage() {
     setGmailDisconnecting(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${DELIVERY_URL}/api/oauth/google/disconnect?user_id=${user.id}`, {
+      const response = await fetch(`${API_URL}/api/oauth/google/disconnect?user_id=${user.id}`, {
         method: "POST",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { authFetch } from "@/lib/auth";
-import { API_URL, DELIVERY_URL } from "@/lib/config";
+import { API_URL } from "@/lib/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -244,7 +244,7 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
-      const response = await authFetch(`${DELIVERY_URL}/api/oauth/google/auth-url?user_id=${user.id}`);
+      const response = await authFetch(`${API_URL}/api/oauth/google/auth-url?user_id=${user.id}`);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

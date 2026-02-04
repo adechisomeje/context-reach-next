@@ -1,16 +1,23 @@
 // Centralized API URL configuration
-// Clean up the API URL - remove any trailing paths and ensure proper format
-const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
-// DELIVERY_URL defaults to API_URL in production, localhost:8004 in development
-const rawDeliveryUrl = process.env.NEXT_PUBLIC_DELIVERY_URL || 
-  (process.env.NODE_ENV === 'production' ? rawApiUrl : "http://localhost:8004");
+// All microservices are exposed through nginx API gateway at a single URL
+//
+// Environment     Base URL
+// Local           http://localhost:8080
+// Production      https://api.contextreach.ai
+//
+// Path-based routing (handled by nginx):
+//   /api/auth/*      → discovery-engine
+//   /api/campaigns/* → discovery-engine
+//   /api/context/*   → context-engine
+//   /api/sequence/*  → composition-engine
+//   /api/oauth/*     → delivery-engine
+
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 // Remove any trailing /api/... paths and trailing slashes
 export const API_URL = rawApiUrl.replace(/\/api\/.*$/, '').replace(/\/$/, '');
-export const DELIVERY_URL = rawDeliveryUrl.replace(/\/api\/.*$/, '').replace(/\/$/, '');
 
 // For debugging in development
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   console.log('API URL configured as:', API_URL);
-  console.log('Delivery URL configured as:', DELIVERY_URL);
 }
