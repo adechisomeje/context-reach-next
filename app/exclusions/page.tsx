@@ -19,13 +19,13 @@ import { Textarea } from "@/components/ui/textarea";
 
 // Types based on API documentation
 
-// Entry in an exclusion list
+// Entry in an exclusion list - matches actual API response
 interface ExclusionEntry {
   id: string;
-  list_id?: string; // Present when adding entry
+  list_id?: string;
   entry_type: "domain" | "email" | "company_name";
-  value: string;
-  normalized_value: string;
+  value: string; // Normalized value (e.g., "competitor.com")
+  original_value?: string; // Original input (e.g., "https://www.competitor.com/page")
   notes: string | null;
   created_at: string;
 }
@@ -205,20 +205,54 @@ export default function ExclusionsPage() {
 
   // Fetch entries for selected list
   const fetchEntries = async (listId: string, offset: number = 0, type?: EntryType) => {
+    console.log("fetchEntries called with listId:", listId, "offset:", offset, "type:", type);
     setIsLoadingEntries(true);
     try {
       let url = `${API_URL}/api/exclusions/lists/${listId}/entries?limit=${entriesLimit}&offset=${offset}`;
       if (type) {
         url += `&entry_type=${type}`;
       }
+      console.log("Fetching entries from:", url);
       const response = await authFetch(url);
+      console.log("Entries response status:", response.status);
       if (response.ok) {
         const data = await response.json();
-        // Ensure we always have an array for entries
-        const entriesArray = Array.isArray(data?.entries) ? data.entries : [];
+        console.log("Entries API response:", data);
+        console.log("Is array?", Array.isArray(data));
+        
+        // Handle different response structures:
+        // 1. Direct array of entries (actual API format)
+        // 2. { entries: [...], total: N } - documented structure
+        // 3. Other wrapper structures
+        let entriesArray: ExclusionEntry[] = [];
+        let total = 0;
+        
+        if (Array.isArray(data)) {
+          // Direct array response
+          console.log("Processing as direct array, length:", data.length);
+          entriesArray = data;
+          total = data.length;
+        } else if (data && typeof data === 'object') {
+          // Object response - try to find entries
+          if (Array.isArray(data.entries)) {
+            entriesArray = data.entries;
+            total = typeof data.total === 'number' ? data.total : data.entries.length;
+          } else if (Array.isArray(data.items)) {
+            entriesArray = data.items;
+            total = typeof data.total === 'number' ? data.total : data.items.length;
+          } else if (Array.isArray(data.data)) {
+            entriesArray = data.data;
+            total = typeof data.total === 'number' ? data.total : data.data.length;
+          }
+        }
+        
+        console.log("Setting entries:", entriesArray.length, "total:", total);
         setEntries(entriesArray);
-        setEntriesTotal(typeof data?.total === 'number' ? data.total : 0);
+        setEntriesTotal(total);
       } else {
+        console.error("Failed to fetch entries, status:", response.status);
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
         setEntries([]);
         setEntriesTotal(0);
       }
@@ -823,9 +857,9 @@ export default function ExclusionsPage() {
                                 <p className="font-medium text-slate-900 dark:text-white">
                                   {entry.value || "Unknown"}
                                 </p>
-                                {entry.normalized_value && entry.normalized_value !== entry.value && (
+                                {entry.original_value && entry.original_value !== entry.value && (
                                   <p className="text-xs text-slate-500">
-                                    Normalized: {entry.normalized_value}
+                                    Original: {entry.original_value}
                                   </p>
                                 )}
                                 {entry.notes && (
