@@ -39,14 +39,20 @@ interface ExclusionList {
   entries?: ExclusionEntry[];
 }
 
+interface ExclusionTypeInfo {
+  count: number;
+  credit_impact: string;
+  description: string;
+}
+
 interface ExclusionSummary {
   total_lists: number;
   active_lists: number;
   total_entries: number;
   by_type: {
-    domain: number;
-    email: number;
-    company_name: number;
+    domain: ExclusionTypeInfo;
+    email: ExclusionTypeInfo;
+    company_name: ExclusionTypeInfo;
   };
   lists: {
     id: string;
@@ -515,8 +521,8 @@ export default function ExclusionsPage() {
                 <CardDescription>🌐 Domains</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-600">{summary.by_type.domain}</div>
-                <p className="text-xs text-emerald-600">Saves credits</p>
+                <div className="text-3xl font-bold text-blue-600">{summary.by_type.domain?.count ?? 0}</div>
+                <p className="text-xs text-emerald-600">{summary.by_type.domain?.credit_impact || "Saves credits"}</p>
               </CardContent>
             </Card>
             <Card>
@@ -524,8 +530,8 @@ export default function ExclusionsPage() {
                 <CardDescription>🏢 Companies</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-600">{summary.by_type.company_name}</div>
-                <p className="text-xs text-emerald-600">Saves credits</p>
+                <div className="text-3xl font-bold text-purple-600">{summary.by_type.company_name?.count ?? 0}</div>
+                <p className="text-xs text-emerald-600">{summary.by_type.company_name?.credit_impact || "Saves credits"}</p>
               </CardContent>
             </Card>
             <Card>
@@ -533,8 +539,8 @@ export default function ExclusionsPage() {
                 <CardDescription>📧 Emails</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-amber-600">{summary.by_type.email}</div>
-                <p className="text-xs text-slate-500">Post-reveal filter</p>
+                <div className="text-3xl font-bold text-amber-600">{summary.by_type.email?.count ?? 0}</div>
+                <p className="text-xs text-slate-500">{summary.by_type.email?.credit_impact || "Post-reveal filter"}</p>
               </CardContent>
             </Card>
           </div>
