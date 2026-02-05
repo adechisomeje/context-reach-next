@@ -43,32 +43,34 @@ interface ExclusionList {
   entries?: ExclusionEntry[]; // Only present if include_entries=true
 }
 
-// GET /api/exclusions/summary response
-// by_type can return either numbers or objects with {count, credit_impact, description}
-type ByTypeValue = number | { count: number; credit_impact?: string; description?: string };
-
-interface ExclusionSummary {
-  total_lists: number;
-  active_lists: number;
-  total_entries: number;
-  by_type?: {
-    domain?: ByTypeValue;
-    email?: ByTypeValue;
-    company_name?: ByTypeValue;
-  };
-  lists?: {
-    id: string;
-    name: string;
-    is_active: boolean;
-    entry_count: number;
-  }[];
+// GET /api/exclusions/summary response - actual API structure
+interface ByTypeInfo {
+  count: number;
+  credit_impact: string;
+  description: string;
 }
 
-// Helper function to extract count from by_type value
-function getTypeCount(value: ByTypeValue | undefined): number {
-  if (value === undefined || value === null) return 0;
-  if (typeof value === 'number') return value;
+interface ExclusionSummary {
+  total_exclusions: number;
+  by_type?: {
+    domain?: ByTypeInfo;
+    email?: ByTypeInfo;
+    company_name?: ByTypeInfo;
+  };
+  pre_reveal_exclusions: number;
+  post_reveal_exclusions: number;
+}
+
+// Helper function to safely extract count from by_type value
+function getTypeCount(value: ByTypeInfo | undefined | null): number {
+  if (!value) return 0;
   return value.count ?? 0;
+}
+
+// Helper function to safely extract credit_impact from by_type value
+function getTypeCreditImpact(value: ByTypeInfo | undefined | null, fallback: string): string {
+  if (!value || !value.credit_impact) return fallback;
+  return value.credit_impact;
 }
 
 // GET /api/exclusions/lists/{list_id}/entries response
@@ -528,23 +530,26 @@ export default function ExclusionsPage() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
             <Card>
               <CardHeader className="pb-2">
-                <CardDescription>Total Lists</CardDescription>
+                <CardDescription>Total Exclusions</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-slate-900 dark:text-white">
-                  {summary.total_lists}
+                  {summary.total_exclusions ?? 0}
                 </div>
-                <p className="text-sm text-slate-500">{summary.active_lists} active</p>
+                <p className="text-sm text-slate-500">
+                  {summary.pre_reveal_exclusions ?? 0} pre-reveal
+                </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardDescription>Total Entries</CardDescription>
+                <CardDescription>Credit Savings</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-slate-900 dark:text-white">
-                  {summary.total_entries}
+                <div className="text-3xl font-bold text-emerald-600">
+                  {summary.pre_reveal_exclusions ?? 0}
                 </div>
+                <p className="text-sm text-slate-500">{summary.post_reveal_exclusions ?? 0} post-reveal</p>
               </CardContent>
             </Card>
             <Card>
@@ -553,7 +558,9 @@ export default function ExclusionsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-blue-600">{getTypeCount(summary.by_type?.domain)}</div>
-                <p className="text-xs text-emerald-600">Saves credits</p>
+                <p className="text-xs text-emerald-600 truncate" title={getTypeCreditImpact(summary.by_type?.domain, "Saves credits")}>
+                  {getTypeCreditImpact(summary.by_type?.domain, "Saves credits")}
+                </p>
               </CardContent>
             </Card>
             <Card>
@@ -562,7 +569,9 @@ export default function ExclusionsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-purple-600">{getTypeCount(summary.by_type?.company_name)}</div>
-                <p className="text-xs text-emerald-600">Saves credits</p>
+                <p className="text-xs text-emerald-600 truncate" title={getTypeCreditImpact(summary.by_type?.company_name, "Saves credits")}>
+                  {getTypeCreditImpact(summary.by_type?.company_name, "Saves credits")}
+                </p>
               </CardContent>
             </Card>
             <Card>
@@ -571,7 +580,9 @@ export default function ExclusionsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-amber-600">{getTypeCount(summary.by_type?.email)}</div>
-                <p className="text-xs text-slate-500">Post-reveal filter</p>
+                <p className="text-xs text-slate-500 truncate" title={getTypeCreditImpact(summary.by_type?.email, "Post-reveal filter")}>
+                  {getTypeCreditImpact(summary.by_type?.email, "Post-reveal filter")}
+                </p>
               </CardContent>
             </Card>
           </div>
