@@ -17,9 +17,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 
-// Types
+// Types based on API documentation
+
+// Entry in an exclusion list
 interface ExclusionEntry {
   id: string;
+  list_id?: string; // Present when adding entry
   entry_type: "domain" | "email" | "company_name";
   value: string;
   normalized_value: string;
@@ -27,6 +30,7 @@ interface ExclusionEntry {
   created_at: string;
 }
 
+// Exclusion list
 interface ExclusionList {
   id: string;
   user_id: string;
@@ -36,23 +40,18 @@ interface ExclusionList {
   created_at: string;
   updated_at: string;
   entry_count: number;
-  entries?: ExclusionEntry[];
+  entries?: ExclusionEntry[]; // Only present if include_entries=true
 }
 
-interface ExclusionTypeInfo {
-  count: number;
-  credit_impact: string;
-  description: string;
-}
-
+// GET /api/exclusions/summary response
 interface ExclusionSummary {
   total_lists: number;
   active_lists: number;
   total_entries: number;
-  by_type?: {
-    domain?: ExclusionTypeInfo;
-    email?: ExclusionTypeInfo;
-    company_name?: ExclusionTypeInfo;
+  by_type: {
+    domain: number;
+    email: number;
+    company_name: number;
   };
   lists: {
     id: string;
@@ -62,11 +61,37 @@ interface ExclusionSummary {
   }[];
 }
 
+// GET /api/exclusions/lists/{list_id}/entries response
 interface EntriesResponse {
   entries: ExclusionEntry[];
   total: number;
   limit: number;
   offset: number;
+}
+
+// GET /api/exclusions/check response
+interface CheckExclusionResponse {
+  value: string;
+  normalized_value: string;
+  entry_type: string;
+  is_excluded: boolean;
+  matched_in_list?: string;
+  matched_list_id?: string;
+}
+
+// POST /api/exclusions/lists/{list_id}/entries/bulk response
+interface BulkAddResponse {
+  added: number;
+  skipped: number;
+  skipped_values: string[];
+}
+
+// POST /api/exclusions/lists/{list_id}/import response
+interface ImportResponse {
+  added: number;
+  skipped: number;
+  skipped_values: string[];
+  errors: string[];
 }
 
 type EntryType = "domain" | "email" | "company_name";
@@ -116,12 +141,12 @@ export default function ExclusionsPage() {
   const [bulkEntryType, setBulkEntryType] = useState<EntryType>("domain");
   const [bulkValues, setBulkValues] = useState("");
   const [isAddingBulk, setIsAddingBulk] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{ added: number; skipped: number } | null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkAddResponse | null>(null);
   
   // Import CSV
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ added: number; skipped: number; errors: string[] } | null>(null);
+  const [importResult, setImportResult] = useState<ImportResponse | null>(null);
   
   // Filter entries
   const [entryTypeFilter, setEntryTypeFilter] = useState<EntryType | "">("");
@@ -131,11 +156,7 @@ export default function ExclusionsPage() {
   // Check value
   const [checkValue, setCheckValue] = useState("");
   const [checkType, setCheckType] = useState<EntryType>("domain");
-  const [checkResult, setCheckResult] = useState<{
-    is_excluded: boolean;
-    matched_in_list?: string;
-    normalized_value: string;
-  } | null>(null);
+  const [checkResult, setCheckResult] = useState<CheckExclusionResponse | null>(null);
   const [isChecking, setIsChecking] = useState(false);
 
   // Fetch summary
@@ -157,7 +178,7 @@ export default function ExclusionsPage() {
       const response = await authFetch(`${API_URL}/api/exclusions/lists?active_only=false`);
       if (response.ok) {
         const data = await response.json();
-        setLists(data);
+        setLists(data ?? []);
       }
     } catch (err) {
       console.error("Failed to fetch exclusion lists:", err);
@@ -175,8 +196,8 @@ export default function ExclusionsPage() {
       const response = await authFetch(url);
       if (response.ok) {
         const data: EntriesResponse = await response.json();
-        setEntries(data.entries);
-        setEntriesTotal(data.total);
+        setEntries(data.entries ?? []);
+        setEntriesTotal(data.total ?? 0);
       }
     } catch (err) {
       console.error("Failed to fetch entries:", err);
@@ -319,8 +340,8 @@ export default function ExclusionsPage() {
         body: JSON.stringify({ entries }),
       });
       if (response.ok) {
-        const result = await response.json();
-        setBulkResult({ added: result.added, skipped: result.skipped });
+        const result: BulkAddResponse = await response.json();
+        setBulkResult(result);
         await fetchEntries(selectedList.id, entriesOffset, entryTypeFilter || undefined);
         await fetchSummary();
         await fetchLists();
@@ -521,8 +542,8 @@ export default function ExclusionsPage() {
                 <CardDescription>🌐 Domains</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-600">{summary.by_type?.domain?.count ?? 0}</div>
-                <p className="text-xs text-emerald-600">{summary.by_type?.domain?.credit_impact || "Saves credits"}</p>
+                <div className="text-3xl font-bold text-blue-600">{summary.by_type?.domain ?? 0}</div>
+                <p className="text-xs text-emerald-600">Saves credits</p>
               </CardContent>
             </Card>
             <Card>
@@ -530,8 +551,8 @@ export default function ExclusionsPage() {
                 <CardDescription>🏢 Companies</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-600">{summary.by_type?.company_name?.count ?? 0}</div>
-                <p className="text-xs text-emerald-600">{summary.by_type?.company_name?.credit_impact || "Saves credits"}</p>
+                <div className="text-3xl font-bold text-purple-600">{summary.by_type?.company_name ?? 0}</div>
+                <p className="text-xs text-emerald-600">Saves credits</p>
               </CardContent>
             </Card>
             <Card>
@@ -539,8 +560,8 @@ export default function ExclusionsPage() {
                 <CardDescription>📧 Emails</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-amber-600">{summary.by_type?.email?.count ?? 0}</div>
-                <p className="text-xs text-slate-500">{summary.by_type?.email?.credit_impact || "Post-reveal filter"}</p>
+                <div className="text-3xl font-bold text-amber-600">{summary.by_type?.email ?? 0}</div>
+                <p className="text-xs text-slate-500">Post-reveal filter</p>
               </CardContent>
             </Card>
           </div>
