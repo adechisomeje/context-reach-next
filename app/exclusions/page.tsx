@@ -44,21 +44,31 @@ interface ExclusionList {
 }
 
 // GET /api/exclusions/summary response
+// by_type can return either numbers or objects with {count, credit_impact, description}
+type ByTypeValue = number | { count: number; credit_impact?: string; description?: string };
+
 interface ExclusionSummary {
   total_lists: number;
   active_lists: number;
   total_entries: number;
-  by_type: {
-    domain: number;
-    email: number;
-    company_name: number;
+  by_type?: {
+    domain?: ByTypeValue;
+    email?: ByTypeValue;
+    company_name?: ByTypeValue;
   };
-  lists: {
+  lists?: {
     id: string;
     name: string;
     is_active: boolean;
     entry_count: number;
   }[];
+}
+
+// Helper function to extract count from by_type value
+function getTypeCount(value: ByTypeValue | undefined): number {
+  if (value === undefined || value === null) return 0;
+  if (typeof value === 'number') return value;
+  return value.count ?? 0;
 }
 
 // GET /api/exclusions/lists/{list_id}/entries response
@@ -542,7 +552,7 @@ export default function ExclusionsPage() {
                 <CardDescription>🌐 Domains</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-600">{summary.by_type?.domain ?? 0}</div>
+                <div className="text-3xl font-bold text-blue-600">{getTypeCount(summary.by_type?.domain)}</div>
                 <p className="text-xs text-emerald-600">Saves credits</p>
               </CardContent>
             </Card>
@@ -551,7 +561,7 @@ export default function ExclusionsPage() {
                 <CardDescription>🏢 Companies</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-600">{summary.by_type?.company_name ?? 0}</div>
+                <div className="text-3xl font-bold text-purple-600">{getTypeCount(summary.by_type?.company_name)}</div>
                 <p className="text-xs text-emerald-600">Saves credits</p>
               </CardContent>
             </Card>
@@ -560,7 +570,7 @@ export default function ExclusionsPage() {
                 <CardDescription>📧 Emails</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-amber-600">{summary.by_type?.email ?? 0}</div>
+                <div className="text-3xl font-bold text-amber-600">{getTypeCount(summary.by_type?.email)}</div>
                 <p className="text-xs text-slate-500">Post-reveal filter</p>
               </CardContent>
             </Card>
