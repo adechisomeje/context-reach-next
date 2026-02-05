@@ -30,7 +30,7 @@ interface ExclusionEntry {
   created_at: string;
 }
 
-// Exclusion list
+// Exclusion list - matches GET /api/exclusions/lists response
 interface ExclusionList {
   id: string;
   user_id: string;
@@ -40,6 +40,9 @@ interface ExclusionList {
   created_at: string;
   updated_at: string;
   entry_count: number;
+  domain_count?: number;
+  email_count?: number;
+  company_count?: number;
   entries?: ExclusionEntry[]; // Only present if include_entries=true
 }
 
@@ -190,10 +193,13 @@ export default function ExclusionsPage() {
       const response = await authFetch(`${API_URL}/api/exclusions/lists?active_only=false`);
       if (response.ok) {
         const data = await response.json();
-        setLists(data ?? []);
+        // Ensure we always have an array
+        const listsArray = Array.isArray(data) ? data : [];
+        setLists(listsArray);
       }
     } catch (err) {
       console.error("Failed to fetch exclusion lists:", err);
+      setLists([]);
     }
   };
 
@@ -207,12 +213,19 @@ export default function ExclusionsPage() {
       }
       const response = await authFetch(url);
       if (response.ok) {
-        const data: EntriesResponse = await response.json();
-        setEntries(data.entries ?? []);
-        setEntriesTotal(data.total ?? 0);
+        const data = await response.json();
+        // Ensure we always have an array for entries
+        const entriesArray = Array.isArray(data?.entries) ? data.entries : [];
+        setEntries(entriesArray);
+        setEntriesTotal(typeof data?.total === 'number' ? data.total : 0);
+      } else {
+        setEntries([]);
+        setEntriesTotal(0);
       }
     } catch (err) {
       console.error("Failed to fetch entries:", err);
+      setEntries([]);
+      setEntriesTotal(0);
     } finally {
       setIsLoadingEntries(false);
     }
@@ -249,12 +262,28 @@ export default function ExclusionsPage() {
         }),
       });
       if (response.ok) {
-        const newList = await response.json();
-        setLists([...lists, newList]);
+        const newListResponse = await response.json();
+        // Ensure the new list has all required fields with defaults
+        const newList: ExclusionList = {
+          id: newListResponse.id,
+          user_id: newListResponse.user_id,
+          name: newListResponse.name || "",
+          description: newListResponse.description || null,
+          is_active: newListResponse.is_active ?? true,
+          created_at: newListResponse.created_at || new Date().toISOString(),
+          updated_at: newListResponse.updated_at || new Date().toISOString(),
+          entry_count: newListResponse.entry_count ?? 0,
+          domain_count: newListResponse.domain_count ?? 0,
+          email_count: newListResponse.email_count ?? 0,
+          company_count: newListResponse.company_count ?? 0,
+        };
+        setLists(prevLists => [...prevLists, newList]);
         setShowCreateModal(false);
         setNewListName("");
         setNewListDescription("");
         setSelectedList(newList);
+        setEntries([]); // Clear entries for new list
+        setEntriesTotal(0);
         await fetchSummary();
       }
     } catch (err) {
@@ -677,13 +706,13 @@ export default function ExclusionsPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-slate-900 dark:text-white">
-                            {list.name}
+                            {list.name || "Unnamed"}
                           </span>
-                          {!list.is_active && (
+                          {list.is_active === false && (
                             <Badge variant="secondary" className="text-xs">Inactive</Badge>
                           )}
                         </div>
-                        <span className="text-sm text-slate-500">{list.entry_count}</span>
+                        <span className="text-sm text-slate-500">{list.entry_count ?? 0}</span>
                       </div>
                       {list.description && (
                         <p className="text-sm text-slate-500 mt-1 truncate">{list.description}</p>
@@ -703,13 +732,13 @@ export default function ExclusionsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="flex items-center gap-2">
-                        {selectedList.name}
-                        {!selectedList.is_active && (
+                        {selectedList.name || "Unnamed List"}
+                        {selectedList.is_active === false && (
                           <Badge variant="secondary">Inactive</Badge>
                         )}
                       </CardTitle>
                       <CardDescription>
-                        {selectedList.description || `${selectedList.entry_count} entries`}
+                        {selectedList.description || `${selectedList.entry_count ?? 0} entries`}
                       </CardDescription>
                     </div>
                     <div className="flex gap-2">
@@ -718,7 +747,7 @@ export default function ExclusionsPage() {
                         size="sm"
                         onClick={() => handleToggleActive(selectedList)}
                       >
-                        {selectedList.is_active ? "Deactivate" : "Activate"}
+                        {selectedList.is_active !== false ? "Deactivate" : "Activate"}
                       </Button>
                       <Button
                         variant="outline"
@@ -785,12 +814,16 @@ export default function ExclusionsPage() {
                             className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="text-lg">{entryTypeIcons[entry.entry_type]}</span>
+                              <span className="text-lg">
+                                {entry.entry_type && entryTypeIcons[entry.entry_type] 
+                                  ? entryTypeIcons[entry.entry_type] 
+                                  : "📋"}
+                              </span>
                               <div>
                                 <p className="font-medium text-slate-900 dark:text-white">
-                                  {entry.value}
+                                  {entry.value || "Unknown"}
                                 </p>
-                                {entry.normalized_value !== entry.value && (
+                                {entry.normalized_value && entry.normalized_value !== entry.value && (
                                   <p className="text-xs text-slate-500">
                                     Normalized: {entry.normalized_value}
                                   </p>
