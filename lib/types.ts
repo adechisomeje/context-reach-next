@@ -121,6 +121,7 @@ export interface MessagingBrief {
   urgency_level: "low" | "medium" | "high";
   personalization_hooks: string[];
   opening_hook: string;
+  linkedin_message?: string;
 }
 
 export interface ContextResearchResponse {
