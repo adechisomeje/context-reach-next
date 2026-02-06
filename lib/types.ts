@@ -426,6 +426,7 @@ export interface AutoStartRequest {
   enrich_credits: number;
   target_regions?: TargetRegion[];
   target_countries?: string[];
+  target_list_id?: string; // Use a target list instead of Apollo discovery
   sequence_config: {
     max_steps: number;
     stop_on_reply: boolean;
@@ -593,4 +594,32 @@ export interface WebsiteAnalysisResponse {
   pain_points_addressed?: string[];
   confidence_score?: number;
   raw_content_summary?: string;
+}
+
+// Target Lists Types
+export interface TargetList {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  contact_count: number;
+  valid_count: number;
+  invalid_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TargetListContact {
+  id: string;
+  target_list_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  website: string;
+  company_name: string | null;
+  title: string | null;
+  is_valid: boolean;
+  validation_error: string | null;
+  created_at: string;
 }

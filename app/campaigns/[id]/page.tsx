@@ -463,9 +463,10 @@ export default function CampaignDetailPage() {
         ) : (
           <>
             {/* Target Criteria (collapsible) */}
-            {campaign.target_criteria && (
+            {campaign.target_criteria && (campaign.target_criteria.job_titles?.length > 0 || campaign.target_criteria.industries?.length > 0 || campaign.target_criteria.company_sizes?.length > 0) && (
               <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 bg-slate-50/30 dark:bg-slate-900/30">
                 <div className="flex items-start gap-6 text-sm">
+                  {campaign.target_criteria.job_titles?.length > 0 && (
                   <div>
                     <span className="text-slate-500">Job Titles:</span>
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -481,6 +482,8 @@ export default function CampaignDetailPage() {
                       )}
                     </div>
                   </div>
+                  )}
+                  {campaign.target_criteria.industries?.length > 0 && (
                   <div>
                     <span className="text-slate-500">Industries:</span>
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -491,6 +494,8 @@ export default function CampaignDetailPage() {
                       ))}
                     </div>
                   </div>
+                  )}
+                  {campaign.target_criteria.company_sizes?.length > 0 && (
                   <div>
                     <span className="text-slate-500">Company Sizes:</span>
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -501,6 +506,7 @@ export default function CampaignDetailPage() {
                       ))}
                     </div>
                   </div>
+                  )}
                 </div>
               </div>
             )}

@@ -124,9 +124,9 @@ const entryTypeIcons: Record<EntryType, string> = {
 };
 
 const entryTypeDescriptions: Record<EntryType, { when: string; impact: string }> = {
-  domain: { when: "Before Apollo reveal", impact: "FREE - Saves credits" },
-  email: { when: "After Apollo reveal", impact: "Credits still charged" },
-  company_name: { when: "Before Apollo reveal", impact: "FREE - Saves credits" },
+  domain: { when: "Before contact reveal", impact: "FREE - Saves credits" },
+  email: { when: "After contact reveal", impact: "Credits still charged" },
+  company_name: { when: "Before contact reveal", impact: "FREE - Saves credits" },
 };
 
 export default function ExclusionsPage() {

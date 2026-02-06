@@ -152,7 +152,8 @@ export function useOrchestration() {
       targetRegions?: TargetRegion[],
       targetCountries?: string[],
       cta?: SequenceCTA,
-      durationConfig?: DurationConfig
+      durationConfig?: DurationConfig,
+      targetListId?: string // Use target list instead of Apollo discovery
     ): Promise<AutoStartResponse | null> => {
       setIsStarting(true);
       setError(null);
@@ -164,6 +165,7 @@ export function useOrchestration() {
           enrich_credits: maxContacts,
           ...(targetRegions && targetRegions.length > 0 && { target_regions: targetRegions }),
           ...(targetCountries && targetCountries.length > 0 && { target_countries: targetCountries }),
+          ...(targetListId && { target_list_id: targetListId }),
           sequence_config: {
             max_steps: sequenceConfig?.max_steps ?? 3,
             stop_on_reply: sequenceConfig?.stop_on_reply ?? true,

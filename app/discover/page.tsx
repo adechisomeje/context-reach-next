@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DiscoveryResponse, JobStatusResponse, TimingStrategy, TargetRegion, RegionInfo, CTAType, SequenceCTA, DurationConfig, WebsiteAnalysisResponse } from "@/lib/types";
+import { DiscoveryResponse, JobStatusResponse, TimingStrategy, TargetRegion, RegionInfo, CTAType, SequenceCTA, DurationConfig, WebsiteAnalysisResponse, TargetList } from "@/lib/types";
 import { authFetch } from "@/lib/auth";
 import { API_URL } from "@/lib/config";
 import { useOrchestration, usePipelineStatus } from "@/hooks/useOrchestration";
@@ -63,6 +63,12 @@ export default function DiscoverPage() {
   // Multi-day campaign duration config
   const [durationConfig, setDurationConfig] = useState<DurationConfig | null>(null);
   const [userCredits, setUserCredits] = useState<number | null>(null); // null until fetched
+
+  // Target list state (use pre-defined contact list instead of Apollo discovery)
+  const [useTargetList, setUseTargetList] = useState(false);
+  const [targetLists, setTargetLists] = useState<TargetList[]>([]);
+  const [selectedTargetListId, setSelectedTargetListId] = useState<string | null>(null);
+  const [targetListsLoading, setTargetListsLoading] = useState(false);
 
   // Manual mode discovery state
   const [step, setStep] = useState<DiscoveryStep>("form");
@@ -126,6 +132,27 @@ export default function DiscoverPage() {
       }
     };
     fetchCredits();
+  }, []);
+
+  // Fetch target lists for auto mode
+  useEffect(() => {
+    const fetchTargetLists = async () => {
+      setTargetListsLoading(true);
+      try {
+        const response = await authFetch(`${API_URL}/api/target-lists`);
+        if (response.ok) {
+          const data = await response.json();
+          const listsArray = Array.isArray(data) ? data : (data.lists || []);
+          // Only show active lists with valid contacts
+          setTargetLists(listsArray.filter((l: TargetList) => l.is_active && l.valid_count > 0));
+        }
+      } catch (err) {
+        console.error("Failed to fetch target lists:", err);
+      } finally {
+        setTargetListsLoading(false);
+      }
+    };
+    fetchTargetLists();
   }, []);
 
   // Fetch saved calendar link
@@ -288,7 +315,8 @@ export default function DiscoverPage() {
       locationMode === "regions" ? selectedRegions : undefined,
       locationMode === "countries" ? selectedCountries : undefined,
       cta,
-      durationConfig || undefined
+      durationConfig || undefined,
+      useTargetList && selectedTargetListId ? selectedTargetListId : undefined
     );
 
     if (result) {
@@ -337,6 +365,8 @@ export default function DiscoverPage() {
     setDurationConfig(null);
     setSolutionInputMode("manual");
     setWebsiteAnalysisResult(null);
+    setUseTargetList(false);
+    setSelectedTargetListId(null);
   };
 
   // Form Step
@@ -505,9 +535,18 @@ export default function DiscoverPage() {
                       max={50}
                       value={maxContacts}
                       onChange={handleContactsChange}
-                      className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white/20 focus:border-transparent"
+                      disabled={useTargetList && !!selectedTargetListId}
+                      className={`w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white/20 focus:border-transparent ${
+                        useTargetList && selectedTargetListId
+                          ? "bg-slate-50 dark:bg-slate-800 opacity-60 cursor-not-allowed"
+                          : "bg-white dark:bg-slate-900"
+                      }`}
                     />
-                    <p className="text-xs text-slate-500 mt-1">Maximum 50</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {useTargetList && selectedTargetListId
+                        ? "Auto-set from target list"
+                        : "Maximum 50"}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
@@ -515,13 +554,30 @@ export default function DiscoverPage() {
                     </label>
                     <input
                       type="number"
-                      value={maxContacts}
+                      value={useTargetList && selectedTargetListId ? 0 : maxContacts}
                       disabled
                       className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg opacity-60 cursor-not-allowed"
                     />
-                    <p className="text-xs text-slate-500 mt-1">Matches max contacts</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {useTargetList && selectedTargetListId
+                        ? "No discovery credits needed"
+                        : "Matches max contacts"}
+                    </p>
                   </div>
                 </div>
+
+                {/* Target List Credit Savings Banner */}
+                {useTargetList && selectedTargetListId && (
+                  <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-600 dark:text-green-400">💰</span>
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        <span className="font-medium">Save {maxContacts} credits!</span>
+                        {" "}Using your target list skips contact discovery.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Auto Mode Settings */}
                 {mode === "auto" && (
@@ -700,7 +756,116 @@ export default function DiscoverPage() {
                   />
                 )}
 
-                {/* Target Location Settings - Available for both modes */}
+                {/* Target List Selection - Only for Auto Mode */}
+                {mode === "auto" && (
+                  <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="font-medium text-slate-900 dark:text-white">
+                          📋 Contact Source
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {useTargetList 
+                            ? "Use your pre-uploaded contact list" 
+                            : "Automatically discover contacts"}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setUseTargetList(!useTargetList);
+                          if (useTargetList) {
+                            setSelectedTargetListId(null);
+                          }
+                        }}
+                        className={`w-10 h-6 rounded-full transition-all relative ${
+                          useTargetList ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'
+                        }`}
+                      >
+                        <div 
+                          className={`w-4 h-4 rounded-full absolute top-1 transition-transform bg-white ${
+                            useTargetList ? 'translate-x-5' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {useTargetList && (
+                      <div className="space-y-3">
+                        {targetListsLoading ? (
+                          <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Loading target lists...
+                          </div>
+                        ) : targetLists.length === 0 ? (
+                          <div className="text-center py-4">
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
+                              No target lists available
+                            </p>
+                            <Link 
+                              href="/target-lists"
+                              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                            >
+                              Create a target list →
+                            </Link>
+                          </div>
+                        ) : (
+                          <>
+                            <Select
+                              value={selectedTargetListId || ""}
+                              onValueChange={(v) => {
+                                setSelectedTargetListId(v);
+                                // Update maxContacts to match target list size
+                                const list = targetLists.find(l => l.id === v);
+                                if (list) {
+                                  setMaxContacts(Math.min(list.valid_count, 50));
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
+                                <SelectValue placeholder="Select a target list..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {targetLists.map((list) => (
+                                  <SelectItem key={list.id} value={list.id}>
+                                    <div className="flex items-center gap-2">
+                                      <span>{list.name}</span>
+                                      <span className="text-xs text-slate-500">
+                                        ({list.valid_count} contacts)
+                                      </span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            {selectedTargetListId && (
+                              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                                <div className="flex items-start gap-2">
+                                  <span className="text-blue-600 dark:text-blue-400">ℹ️</span>
+                                  <div className="text-xs text-blue-700 dark:text-blue-300">
+                                    <p className="font-medium mb-1">Target List Mode Active</p>
+                                    <ul className="list-disc list-inside space-y-0.5">
+                                      <li>Using {targetLists.find(l => l.id === selectedTargetListId)?.valid_count || maxContacts} contacts from your list</li>
+                                      <li>Contact discovery skipped — <span className="font-medium">0 discovery credits</span></li>
+                                      <li>Location targeting disabled (contacts are pre-defined)</li>
+                                      <li>Research and email composition proceed normally</li>
+                                    </ul>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Target Location Settings - Available for both modes (hidden when using target list) */}
+                {!(useTargetList && selectedTargetListId) && (
                 <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                   <h4 className="font-medium text-slate-900 dark:text-white mb-4">
                     🌍 Target Location
@@ -840,6 +1005,7 @@ export default function DiscoverPage() {
                       </div>
                     )}
                   </div>
+                )}
 
                 {/* Error */}
                 {error && (
