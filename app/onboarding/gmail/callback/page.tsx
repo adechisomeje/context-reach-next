@@ -51,8 +51,8 @@ export default function OnboardingGmailCallbackPage() {
         // Refresh user data to get updated gmail_connected status
         await refreshUser();
         
-        // Redirect back to onboarding
-        router.push("/onboarding");
+        // Redirect back to onboarding with success parameter to trigger completion
+        router.push("/onboarding?gmail_connected=true");
       } catch (err) {
         console.error("Gmail callback error:", err);
         setError(err instanceof Error ? err.message : "Failed to connect Gmail");

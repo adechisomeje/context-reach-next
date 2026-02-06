@@ -22,6 +22,13 @@ const SKIP_ONBOARDING_PATHS = [
   "/settings/gmail/callback",
 ];
 
+// Check if URL has tour parameter (App Tour should always be allowed)
+function hasTourParam(): boolean {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get("tour") === "true";
+}
+
 interface OnboardingGuardProps {
   children: React.ReactNode;
 }
@@ -56,6 +63,9 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
 
     // Allow access to settings even if onboarding not complete
     if (SKIP_ONBOARDING_PATHS.some(path => pathname.startsWith(path))) return;
+
+    // Allow App Tour to proceed (user explicitly clicked "App Tour" button)
+    if (hasTourParam()) return;
 
     // Redirect to onboarding if not completed AND not skipped
     if (!user.onboarding_completed && !user.onboarding_skipped) {
