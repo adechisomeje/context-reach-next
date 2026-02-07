@@ -56,7 +56,7 @@ export function ContextResearchPanel({
       case "medium":
         return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
       case "low":
-        return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
+        return "bg-orange-50 text-[#ff7032] dark:bg-orange-900/30 dark:text-[#ff8c5a]";
       default:
         return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
     }
@@ -80,7 +80,7 @@ export function ContextResearchPanel({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto py-8">
       <div className="bg-white dark:bg-slate-950 rounded-lg shadow-xl w-full max-w-3xl mx-4 my-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 rounded-t-lg px-6 py-4 z-10">
+        <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-orange-100 dark:border-orange-900/30 rounded-t-lg px-6 py-4 z-10">
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/AuthProvider";
@@ -164,15 +165,16 @@ export function Sidebar() {
 	};
 
 	return (
-		<aside className="fixed left-0 top-0 z-40 h-screen w-60 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 flex flex-col">
+		<aside className="fixed left-0 top-0 z-40 h-screen w-60 border-r border-orange-100 bg-white dark:border-orange-900/30 dark:bg-slate-950 flex flex-col">
 			{/* Logo */}
-			<div className="flex h-14 items-center px-4 border-b border-slate-200 dark:border-slate-800">
+			<div className="flex h-14 items-center px-4 border-b border-orange-100 dark:border-orange-900/30">
 				<Link href="/dashboard" className="flex items-center gap-2">
-					<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 dark:bg-white">
-						<span className="text-xs font-bold text-white dark:text-slate-900">
-							CR
-						</span>
-					</div>
+					<Image
+						src="/logo.png"
+						alt="ContextReach"
+						width={28}
+						height={28}
+					/>
 					<span className="text-sm font-semibold text-slate-900 dark:text-white">
 						ContextReach
 					</span>
@@ -192,14 +194,14 @@ export function Sidebar() {
 							className={cn(
 								"flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
 								isActive
-									? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white"
-									: "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white"
+									? "bg-orange-50 text-[#ff7032] dark:bg-orange-950/30 dark:text-[#ff8c5a]"
+									: "text-slate-600 hover:bg-orange-50/50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-orange-950/20 dark:hover:text-white"
 							)}
 						>
 							<span
 								className={
 									isActive
-										? "text-slate-900 dark:text-white"
+										? "text-[#ff7032] dark:text-[#ff8c5a]"
 										: "text-slate-400"
 								}
 							>
@@ -212,7 +214,7 @@ export function Sidebar() {
 			</nav>
 
 			{/* Bottom Section */}
-			<div className="border-t border-slate-200 dark:border-slate-800">
+			<div className="border-t border-orange-100 dark:border-orange-900/30">
 				{/* Credits */}
 				{user && (
 					<div className="p-3">
@@ -221,8 +223,8 @@ export function Sidebar() {
 							className={cn(
 								"block px-3 py-2 rounded-lg border transition-colors",
 								pathname === "/credits"
-									? "bg-slate-100 border-slate-300 dark:bg-slate-800 dark:border-slate-700"
-									: "bg-slate-50 border-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:border-slate-800 dark:hover:bg-slate-800"
+									? "bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800/50"
+									: "bg-slate-50 border-orange-100 hover:bg-orange-50/50 dark:bg-slate-900 dark:border-orange-900/30 dark:hover:bg-orange-950/20"
 							)}
 						>
 							<div className="flex items-center justify-between">
@@ -257,7 +259,7 @@ export function Sidebar() {
 					{/* Tour Button */}
 					<button
 						onClick={startTour}
-						className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white"
+						className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-slate-600 hover:bg-orange-50/50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-orange-950/20 dark:hover:text-white"
 					>
 						<span className="text-slate-400">
 							<svg
@@ -286,14 +288,14 @@ export function Sidebar() {
 								className={cn(
 									"flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
 									isActive
-										? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white"
-										: "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white"
+										? "bg-orange-50 text-[#ff7032] dark:bg-orange-950/30 dark:text-[#ff8c5a]"
+										: "text-slate-600 hover:bg-orange-50/50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-orange-950/20 dark:hover:text-white"
 								)}
 							>
 								<span
 									className={
 										isActive
-											? "text-slate-900 dark:text-white"
+											? "text-[#ff7032] dark:text-[#ff8c5a]"
 											: "text-slate-400"
 									}
 								>
@@ -306,11 +308,11 @@ export function Sidebar() {
 				</div>
 
 				{/* User */}
-				<div className="p-3 border-t border-slate-200 dark:border-slate-800">
+				<div className="p-3 border-t border-orange-100 dark:border-orange-900/30">
 					{user && (
 						<div className="flex items-center gap-3">
-							<div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0">
-								<span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+							<div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#ff7032] to-[#ff8c5a] flex-shrink-0">
+								<span className="text-xs font-medium text-white">
 									{getInitials()}
 								</span>
 							</div>
@@ -324,7 +326,7 @@ export function Sidebar() {
 							</div>
 							<button
 								onClick={logout}
-								className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+								className="p-1.5 text-slate-400 hover:text-[#ff7032] dark:hover:text-[#ff8c5a] hover:bg-orange-50 dark:hover:bg-orange-950/30 rounded transition-colors"
 								title="Log out"
 							>
 								<svg

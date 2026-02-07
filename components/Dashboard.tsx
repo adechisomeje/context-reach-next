@@ -166,15 +166,15 @@ export function Dashboard() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
+    <div className="h-screen flex flex-col bg-white dark:bg-slate-950">
       {/* Page Header */}
-      <div className="flex-shrink-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex-shrink-0 bg-white dark:bg-slate-900 border-b border-orange-100 dark:border-orange-900/30">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Dashboard</h1>
-                <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full">
+                <span className="px-2 py-0.5 text-xs font-medium bg-orange-50 text-[#ff7032] dark:bg-orange-900/30 dark:text-[#ff8c5a] rounded-full">
                   CRM
                 </span>
               </div>
@@ -185,13 +185,13 @@ export function Dashboard() {
             <div className="flex items-center gap-3">
               <button 
                 onClick={fetchCampaigns}
-                className="p-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                className="p-2 text-slate-500 hover:text-[#ff7032] dark:hover:text-[#ff8c5a] hover:bg-orange-50 dark:hover:bg-orange-950/30 rounded-lg transition-colors"
                 title="Refresh"
               >
                 <Icons.Refresh />
               </button>
               <Link href="/discover">
-                <button className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm">
+                <button className="px-4 py-2 text-sm font-medium bg-[#ff7032] text-white rounded-lg hover:bg-[#e5652d] transition-colors flex items-center gap-2 shadow-sm">
                   <Icons.Plus />
                   New Discovery
                 </button>
@@ -207,14 +207,14 @@ export function Dashboard() {
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {/* Total Campaigns */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-shadow">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-orange-100 dark:border-orange-900/30 p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Campaigns</p>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{stats.totalCampaigns}</p>
                 </div>
-                <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <div className="text-blue-600 dark:text-blue-400">
+                <div className="p-2.5 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                  <div className="text-[#ff7032] dark:text-[#ff8c5a]">
                     <Icons.Campaign />
                   </div>
                 </div>
@@ -230,14 +230,14 @@ export function Dashboard() {
             </div>
 
             {/* Total Contacts */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-shadow">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-orange-100 dark:border-orange-900/30 p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Contacts</p>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{stats.totalContacts.toLocaleString()}</p>
                 </div>
-                <div className="p-2.5 bg-violet-50 dark:bg-violet-900/20 rounded-lg">
-                  <div className="text-violet-600 dark:text-violet-400">
+                <div className="p-2.5 bg-[#ffc3a6]/30 dark:bg-orange-900/20 rounded-lg">
+                  <div className="text-[#ff8c5a] dark:text-[#ffa77f]">
                     <Icons.Users />
                   </div>
                 </div>
@@ -248,7 +248,7 @@ export function Dashboard() {
             </div>
 
             {/* Enriched Contacts */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-shadow">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-orange-100 dark:border-orange-900/30 p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Enriched</p>
@@ -261,9 +261,9 @@ export function Dashboard() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 mt-3 text-xs">
-                <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="flex-1 h-1.5 bg-orange-50 dark:bg-orange-900/20 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
+                    className="h-full bg-[#ff7032] rounded-full transition-all duration-500" 
                     style={{ width: `${enrichmentRate}%` }}
                   />
                 </div>
@@ -272,7 +272,7 @@ export function Dashboard() {
             </div>
 
             {/* Active Processing */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-shadow">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-orange-100 dark:border-orange-900/30 p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Active Now</p>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { login } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
 import { API_URL } from "@/lib/config";
@@ -74,14 +75,17 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       {/* Navbar */}
-      <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-orange-100 dark:border-orange-900/30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 dark:bg-white">
-              <span className="text-sm font-bold text-white dark:text-slate-900">CR</span>
-            </div>
+            <Image
+              src="/logo.png"
+              alt="ContextReach"
+              width={32}
+              height={32}
+            />
             <span className="text-xl font-semibold text-slate-900 dark:text-white">
               ContextReach
             </span>
@@ -89,7 +93,7 @@ export default function SignInPage() {
           <div className="flex items-center gap-3">
             <Link 
               href="/signup" 
-              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-[#ff7032] dark:hover:text-[#ff8c5a] transition-colors"
             >
               Sign up
             </Link>
@@ -102,10 +106,14 @@ export default function SignInPage() {
           <div className="glass-card">
             {/* Logo */}
             <div className="text-center mb-8">
-              <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 mb-4 shadow-lg shadow-purple-500/25">
-                <span className="text-xl font-bold text-white">CR</span>
-              </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 bg-clip-text text-transparent">
+              <Image
+                src="/logo.png"
+                alt="ContextReach"
+                width={56}
+                height={56}
+                className="mx-auto mb-4"
+              />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-[#ff7032] via-[#ff8c5a] to-[#ff7032] bg-clip-text text-transparent">
                 Welcome back
               </h1>
               <p className="text-muted-foreground mt-1">Sign in to your account</p>
@@ -201,7 +209,7 @@ export default function SignInPage() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-purple-600 dark:text-purple-400 font-medium hover:underline">
+            <Link href="/signup" className="text-[#ff7032] dark:text-[#ff8c5a] font-medium hover:underline">
               Sign up
             </Link>
           </p>
