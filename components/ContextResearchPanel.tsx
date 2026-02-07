@@ -149,6 +149,97 @@ export function ContextResearchPanel({
 
         {/* Content */}
         <div className="p-6 space-y-6">
+          {/* Competing Solutions Warning */}
+          {research.company_context.competing_solutions?.detected && (
+            <div className={`rounded-lg border overflow-hidden ${
+              research.company_context.competing_solutions.recommendation === 'exclude'
+                ? 'border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20'
+                : research.company_context.competing_solutions.recommendation === 'low_priority'
+                ? 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20'
+                : 'border-slate-200 dark:border-slate-800'
+            }`}>
+              <div className={`px-4 py-3 border-b flex items-center justify-between ${
+                research.company_context.competing_solutions.recommendation === 'exclude'
+                  ? 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-800'
+                  : research.company_context.competing_solutions.recommendation === 'low_priority'
+                  ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-800'
+                  : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <svg className={`w-5 h-5 ${
+                    research.company_context.competing_solutions.recommendation === 'exclude'
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-amber-600 dark:text-amber-400'
+                  }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <h3 className={`text-sm font-medium ${
+                    research.company_context.competing_solutions.recommendation === 'exclude'
+                      ? 'text-red-900 dark:text-red-100'
+                      : 'text-amber-900 dark:text-amber-100'
+                  }`}>
+                    Competing Solution Detected
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    research.company_context.competing_solutions.recommendation === 'exclude'
+                      ? 'bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200'
+                      : research.company_context.competing_solutions.recommendation === 'low_priority'
+                      ? 'bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200'
+                      : 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200'
+                  }`}>
+                    {research.company_context.competing_solutions.recommendation === 'exclude' 
+                      ? 'Excluded' 
+                      : research.company_context.competing_solutions.recommendation === 'low_priority'
+                      ? 'Low Priority'
+                      : 'Proceed'}
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    {research.company_context.competing_solutions.overlap_percentage}% overlap
+                  </span>
+                </div>
+              </div>
+              <div className="p-4 space-y-3">
+                <p className={`text-sm ${
+                  research.company_context.competing_solutions.recommendation === 'exclude'
+                    ? 'text-red-700 dark:text-red-300'
+                    : 'text-amber-700 dark:text-amber-300'
+                }`}>
+                  {research.company_context.competing_solutions.reason}
+                </p>
+                {research.company_context.competing_solutions.solutions.length > 0 && (
+                  <div className="space-y-2">
+                    {research.company_context.competing_solutions.solutions.map((solution, index) => (
+                      <div key={index} className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-slate-900 dark:text-white">
+                            {solution.name}
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                            {solution.type.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        {solution.overlap_areas.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {solution.overlap_areas.map((area, areaIndex) => (
+                              <span key={areaIndex} className="px-2 py-0.5 rounded-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                {area}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {solution.evidence}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Opening Hook */}
           <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
             <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">

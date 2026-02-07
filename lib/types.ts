@@ -102,6 +102,22 @@ export interface BuyingSignal {
   strength: "strong" | "medium" | "weak";
 }
 
+export interface CompetingSolution {
+  name: string;
+  type: "mobile_app" | "web_platform" | "partnership" | "in_house" | "other";
+  overlap_areas: string[];
+  evidence: string;
+}
+
+export interface CompetingSolutionsInfo {
+  detected: boolean;
+  confidence: "high" | "medium" | "low";
+  solutions: CompetingSolution[];
+  recommendation: "exclude" | "low_priority" | "proceed";
+  reason: string;
+  overlap_percentage: number;
+}
+
 export interface CompanyContext {
   buying_signals: BuyingSignal[];
   industry_context: BuyingSignal[];
@@ -113,6 +129,7 @@ export interface CompanyContext {
   product_category: string;
   news: BuyingSignal[];
   peer_activity: BuyingSignal[];
+  competing_solutions?: CompetingSolutionsInfo;
 }
 
 export interface MessagingBrief {
